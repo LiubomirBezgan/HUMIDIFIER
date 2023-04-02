@@ -72,7 +72,7 @@ int8_t BME280_read_data (struct bme280_dev *dev, struct bme280_data * pcomp_data
 {
 	int8_t rslt;
 
-	printf("Temperature, Pressure, Humidity\r\n");
+	//printf("Temperature, Pressure, Humidity\r\n");
 	/* Delay while the sensor completes a measurement */
 	dev->delay_us(70, dev->intf_ptr);
 	rslt = bme280_get_sensor_data(BME280_ALL, pcomp_data, dev);

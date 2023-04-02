@@ -8,6 +8,8 @@
 #ifndef INC_BME280_ADD_H_
 #define INC_BME280_ADD_H_
 
+#include "bme280_defs.h"
+
 int8_t BME280_init(struct bme280_dev *dev);
 int8_t BME280_read_data (struct bme280_dev *dev, struct bme280_data * pcomp_data);
 //void print_sensor_data(struct bme280_data *comp_data);
