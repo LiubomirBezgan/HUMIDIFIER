@@ -145,7 +145,7 @@ int main(void)
 	  else
 	  {
 		  LB_ssd1331_print_data(&bme280_sens_data);
-		  LB_send_data_via_UART(&bme280_sens_data);
+		  //LB_send_data_via_UART(&bme280_sens_data);
 	  }
 	  HAL_Delay(1000);
   }
@@ -227,7 +227,7 @@ void LB_ssd1331_reset_screen(const struct bme280_data * data)
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BLACK);
 	sprintf((char *) message, "H: %.2f %%",data->humidity);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "P: %.0f mmHg",data->pressure * 0.00750062);
+	sprintf((char *) message, "P: %.0f mmHg",data->pressure * 0.0075);
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BLACK);
 }
 
@@ -239,7 +239,7 @@ void LB_ssd1331_print_data(const struct bme280_data * data)
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, PURPLE);
 	sprintf((char *) message, "H: %.2f %%",data->humidity);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
-	sprintf((char *) message, "P: %.0f mmHg",data->pressure * 0.00750062);
+	sprintf((char *) message, "P: %.0f mmHg",data->pressure * 0.0075);
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);
 
 }
