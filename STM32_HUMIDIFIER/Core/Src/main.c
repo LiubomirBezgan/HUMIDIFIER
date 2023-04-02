@@ -215,7 +215,7 @@ void LB_send_data_via_UART(const struct bme280_data * data)
 
 	message_length = sprintf((char *) message, "Temperature   Humidity   Pressure\r\n");
 	HAL_UART_Transmit(&huart2, (uint8_t *) message, message_length, 100);
-	message_length = sprintf((char *) message, "%.2f C       %.2f %%    %.2f P\r\n",data->temperature, data->humidity, data->pressure);
+	//message_length = sprintf((char *) message, "%.2f C       %.2f %%    %.2f P\r\n",data->temperature, data->humidity, data->pressure);
 	HAL_UART_Transmit(&huart2, (uint8_t *) message, message_length, 100);
 }
 
@@ -223,11 +223,14 @@ void LB_ssd1331_reset_screen(const struct bme280_data * data)
 {
 	uint8_t message[MAX_LEN];
 
-	sprintf((char *) message, "T: %.2f C",data->temperature);
+	//sprintf((char *) message, "T: %.2f C",data->temperature);
+	sprintf((char *) message, "T: %lu.%lu C", data->temperature / 100, data->temperature % 100);
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "H: %.2f %%",data->humidity);
+	//sprintf((char *) message, "H: %.2f %%",data->humidity);
+	sprintf((char *) message, "H: %lu.%2lu %%", (uint32_t) data->humidity / 1024, (uint32_t) data->humidity % 1024);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "P: %.0f mmHg",data->pressure * 0.00750062);
+	//sprintf((char *) message, "P: %.0f mmHg",data->pressure * 0.00750062);
+	sprintf((char *) message, "P: %lu mmHg", (uint32_t) (data->pressure * 0.00750062));
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BLACK);
 }
 
@@ -235,11 +238,14 @@ void LB_ssd1331_print_data(const struct bme280_data * data)
 {
 	uint8_t message[MAX_LEN];
 
-	sprintf((char *) message, "T: %.2f C",data->temperature);
+	//sprintf((char *) message, "T: %.2f C",data->temperature);
+	sprintf((char *) message, "T: %lu.%lu C", data->temperature / 100, data->temperature % 100);
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, PURPLE);
-	sprintf((char *) message, "H: %.2f %%",data->humidity);
+	//sprintf((char *) message, "H: %.2f %%",data->humidity);
+	sprintf((char *) message, "H: %lu.%2lu %%", (uint32_t) data->humidity / 1024, (uint32_t) data->humidity % 1024);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
-	sprintf((char *) message, "P: %.0f mmHg",data->pressure * 0.00750062);
+	//sprintf((char *) message, "P: %.0f mmHg",data->pressure * 0.00750062);
+	sprintf((char *) message, "P: %lu mmHg", (uint32_t) (data->pressure * 0.00750062));
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);
 
 }
