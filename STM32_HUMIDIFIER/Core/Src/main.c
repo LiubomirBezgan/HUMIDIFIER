@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
+#include "dma.h"
 #include "fatfs.h"
 #include "i2c.h"
 #include "spi.h"
@@ -40,6 +42,9 @@
 
 // SD CARD
 #include "fatfs_sd.h"
+
+// UI
+#include "LB_UI_Joystick.h"
 
 // Generic
 #include "stdio.h"
@@ -99,11 +104,18 @@ FATFS * pfs;
 DWORD fre_clust;
 uint32_t total, free_space;
 
+// UI
+Joystick_t Joystick;
+Button_t Pressed;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+// UI
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+
 // UART (BME280)
 void LB_send_mes_via_UART(char * string);
 void LB_send_data_via_UART(const struct bme280_data * data);
@@ -152,16 +164,24 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_SPI2_Init();
   MX_FATFS_Init();
   MX_I2C1_Init();
   MX_SPI3_Init();
   MX_TIM10_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+
   // Initializations of date and time
   LB_Init_Date(&today);
   LB_Init_Time(&time);
+
+  // The initialization of UI
+  LB_Init_Button(&Pressed);
+  LB_ADC_Start_DMA(&hadc1, &Joystick);
+
 
   // The initialization of humidity sensor
   if (BME280_OK != BME280_init(&bme280_sens_dev))
@@ -244,7 +264,36 @@ int main(void)
 		  //LB_send_data_via_UART(&bme280_sens_data);
 		  LB_update_logs(logs_file_name, &today, &time, &bme280_sens_data);
 	  }
-	  HAL_Delay(5000);
+	  if (Pressed)
+	  {
+		  //LB_send_mes_via_UART("SWITCH ON!\r\n");
+		  HAL_GPIO_TogglePin(Membrane_GPIO_Port, Membrane_Pin);
+		  __HAL_PWR_PVD_EXTI_ENABLE_IT();
+		  Pressed = false;
+
+	  }
+	  if (JOYSTICK_LEFT(Joystick))
+	  {
+		  LB_send_mes_via_UART("LEFT\r\n");
+	  }
+	  else if (JOYSTICK_RIGHT(Joystick))
+	  {
+		  LB_send_mes_via_UART("RIGHT\r\n");
+	  }
+	  else if (JOYSTICK_UP(Joystick))
+	  {
+		  LB_send_mes_via_UART("UP\r\n");
+	  }
+	  else if (JOYSTICK_DOWN(Joystick))
+	  {
+		  LB_send_mes_via_UART("DOWN\r\n");
+	  }
+	  else
+	  {
+		  LB_send_mes_via_UART("HOLD\r\n");
+	  }
+	  HAL_Delay(2500);
+
   }
   /* USER CODE END 3 */
 }
@@ -295,6 +344,14 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if (Joystick_button_Pin == GPIO_Pin)
+	{
+		Pressed = true;
+		__HAL_PWR_PVD_EXTI_DISABLE_IT();
+	}
+}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -398,14 +455,14 @@ FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * pt
 
 	// Mount SD Card
 	fresult = f_mount(&fs, "", 0);
-	if (FR_OK != fresult)
+	/*if (FR_OK != fresult)
 	{
 	  send_uart("error in mounting SD CARD...\r\n");
 	}
 	else
 	{
 	  send_uart("SD CARD mounted successfully...\r\n");
-	}
+	}*/
 
 	/*** Updating an existing file ***/
 
@@ -424,10 +481,10 @@ FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * pt
 
 	// Unmount SD CARD
 	fresult = f_mount(NULL, "", 1);
-	if (FR_OK == fresult)
+	/*if (FR_OK == fresult)
 	{
 	  send_uart("SD CARD UNMOUNTED successfully...\n\r");
-	}
+	}*/
 
 	return fresult;
 }
