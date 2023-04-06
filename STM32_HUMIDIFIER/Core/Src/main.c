@@ -46,13 +46,18 @@
 // UI
 #include "LB_UI_Joystick.h"
 
+// FMS
+#include "LB_FSM_Humidifier.h"
+
 // Generic
 #include "stdio.h"
 #include "string.h"
+#include "stdbool.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+// Temperature, humidity and pressure measurement
 
 /* USER CODE END PTD */
 
@@ -71,6 +76,9 @@
 
 // SD CARD
 #define MAX_SD_CARD_BUFF 1024
+#define LOGGING_FREQ_1 300			// 5 min
+#define LOGGING_FREQ_2 900			// 15 min
+#define LOGGING_FREQ_3 1800			// 30 min
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -83,16 +91,21 @@
 /* USER CODE BEGIN PV */
 // Date and time
 Time_t time;
+uint8_t message_time[9];
 Date_t today;
+uint8_t message_date[12];
 
 // Temperature, humidity and pressure measurement
 struct bme280_dev bme280_sens_dev;
 struct bme280_data bme280_sens_data;
+UNITS_e unit_system = SI;
 
-// Data output
-
+// OLED
+uint8_t thp_screen_counter = 0;
+volatile bool clock_screen_update = false;
 
 // SD CARD
+uint16_t logging_frequency = LOGGING_FREQ_1;
 char * logs_file_name = "logs.csv"; //char * logs_file_name = "logs.txt";
 FATFS fs;							// file system
 FIL fil;							// file
@@ -108,6 +121,62 @@ uint32_t total, free_space;
 Joystick_t Joystick;
 Button_t Pressed;
 
+// FSM
+STATE_e FSM_State = state_thp_screen;
+EVENT_e FSM_Event = event_none;
+
+TRANSITION_FUNC_PTR_t transition_table[STATE_MAX][EVENT_MAX] = {
+		[state_thp_screen]					[event_none]			=thp_screen,
+		[state_thp_screen]					[event_button_pressed]	=thp_screen,
+		[state_thp_screen]					[event_joystick_right]	=clock_screen,
+		[state_thp_screen]					[event_joystick_left]	=data_logging_period_screen,
+
+		[state_clock_screen]				[event_none]			=clock_screen,
+		[state_clock_screen]				[event_button_pressed]	=set_time_h,
+		[state_clock_screen]				[event_joystick_right]	=data_logging_period_screen,
+		[state_clock_screen]				[event_joystick_left]	=thp_screen,
+
+		[state_data_logging_period_screen]	[event_none]			=data_logging_period_screen,
+		[state_data_logging_period_screen]	[event_button_pressed]	=set_data_logging_period,
+		[state_data_logging_period_screen]	[event_joystick_right]	=thp_screen,
+		[state_data_logging_period_screen]	[event_joystick_left]	=clock_screen,
+
+		[state_set_time_h]					[event_none]			=set_time_h,
+		[state_set_time_h]					[event_button_pressed]	=set_date_d,
+		[state_set_time_h]					[event_joystick_right]	=set_time_m,
+		[state_set_time_h]					[event_joystick_left]	=set_time_s,
+
+		[state_set_time_m]					[event_none]			=set_time_m,
+		[state_set_time_m]					[event_button_pressed]	=set_date_d,
+		[state_set_time_m]					[event_joystick_right]	=set_time_s,
+		[state_set_time_m]					[event_joystick_left]	=set_time_h,
+
+		[state_set_time_s]					[event_none]			=set_time_s,
+		[state_set_time_s]					[event_button_pressed]	=set_date_d,
+		[state_set_time_s]					[event_joystick_right]	=set_time_h,
+		[state_set_time_s]					[event_joystick_left]	=set_time_m,
+
+		[state_set_date_y]					[event_none]			=set_date_y,
+		[state_set_date_y]					[event_button_pressed]	=clock_screen,
+		[state_set_date_y]					[event_joystick_right]	=set_date_d,
+		[state_set_date_y]					[event_joystick_left]	=set_date_m,
+
+		[state_set_date_m]					[event_none]			=set_date_m,
+		[state_set_date_m]					[event_button_pressed]	=clock_screen,
+		[state_set_date_m]					[event_joystick_right]	=set_date_y,
+		[state_set_date_m]					[event_joystick_left]	=set_date_d,
+
+		[state_set_date_d]					[event_none]			=set_date_d,
+		[state_set_date_d]					[event_button_pressed]	=clock_screen,
+		[state_set_date_d]					[event_joystick_right]	=set_date_m,
+		[state_set_date_d]					[event_joystick_left]	=set_date_y,
+
+		[state_set_data_logging_period]		[event_none]			=set_data_logging_period,
+		[state_set_data_logging_period]		[event_button_pressed]	=data_logging_period_screen,
+		[state_set_data_logging_period]		[event_joystick_right]	=set_data_logging_period,
+		[state_set_data_logging_period]		[event_joystick_left]	=set_data_logging_period
+
+};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -121,8 +190,10 @@ void LB_send_mes_via_UART(char * string);
 void LB_send_data_via_UART(const struct bme280_data * data);
 
 // OLED
-void LB_ssd1331_print_data(const struct bme280_data * data);
-void LB_ssd1331_reset_screen(const struct bme280_data * data);
+void LB_ssd1331_print_data_SI(const struct bme280_data * data);
+void LB_ssd1331_print_data_Imperial(const struct bme280_data * data);
+void LB_ssd1331_reset_screen_SI(const struct bme280_data * data);
+void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data);
 
 // SD CARD
 void send_uart (char * string);	// to send the data to the uart
@@ -250,29 +321,31 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  transition_table[FSM_State][FSM_Event]();
+	  __HAL_PWR_PVD_EXTI_ENABLE_IT();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  LB_ssd1331_reset_screen(&bme280_sens_data);
-	  if (BME280_OK != BME280_read_data(&bme280_sens_dev, &bme280_sens_data))
+	  //LB_ssd1331_reset_screen_SI(&bme280_sens_data);
+	  /*if (BME280_OK != BME280_read_data(&bme280_sens_dev, &bme280_sens_data))
 	  {
-		  LB_send_mes_via_UART("A failure to read a data!\r\n");
+		  //LB_send_mes_via_UART("A failure to read a data!\r\n");
 	  }
 	  else
 	  {
-		  LB_ssd1331_print_data(&bme280_sens_data);
+		 // LB_ssd1331_print_data_SI(&bme280_sens_data);
 		  //LB_send_data_via_UART(&bme280_sens_data);
 		  LB_update_logs(logs_file_name, &today, &time, &bme280_sens_data);
-	  }
-	  if (Pressed)
+	  }*/
+	  /*if (Pressed)
 	  {
 		  //LB_send_mes_via_UART("SWITCH ON!\r\n");
 		  HAL_GPIO_TogglePin(Membrane_GPIO_Port, Membrane_Pin);
 		  __HAL_PWR_PVD_EXTI_ENABLE_IT();
 		  Pressed = false;
 
-	  }
-	  if (JOYSTICK_LEFT(Joystick))
+	  }*/
+	  /* if (JOYSTICK_LEFT(Joystick))
 	  {
 		  LB_send_mes_via_UART("LEFT\r\n");
 	  }
@@ -292,7 +365,7 @@ int main(void)
 	  {
 		  LB_send_mes_via_UART("HOLD\r\n");
 	  }
-	  HAL_Delay(2500);
+	  HAL_Delay(2500);*/
 
   }
   /* USER CODE END 3 */
@@ -348,7 +421,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if (Joystick_button_Pin == GPIO_Pin)
 	{
-		Pressed = true;
+		if (state_thp_screen == FSM_State)
+		{
+			if (SI == unit_system)
+			{
+				unit_system = Imperial;
+			}
+			else
+			{
+				unit_system = SI;
+			}
+		}
+		FSM_Event = event_button_pressed;
+		//Pressed = true;
 		__HAL_PWR_PVD_EXTI_DISABLE_IT();
 	}
 }
@@ -358,6 +443,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 	if (TIM10 == htim->Instance /*&& print_time == state*/)
 	{
+		thp_screen_counter++;
+		clock_screen_update = true;
 		//ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, END_OF_THE_LINE_TIME, H_LINE_OFFSET_Y, BLACK);	// old lines
 		//ssd1331_draw_line(DATE_OFFSET_X, D_LINE_OFFSET_Y, END_OF_THE_LINE_DATE, D_LINE_OFFSET_Y, BLACK);		// old lines
 		//ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);							// new lines
@@ -397,7 +484,7 @@ void LB_send_data_via_UART(const struct bme280_data * data)
 }
 
 // OLED
-void LB_ssd1331_reset_screen(const struct bme280_data * data)
+void LB_ssd1331_reset_screen_SI(const struct bme280_data * data)
 {
 	uint8_t message[MAX_LEN_DATA];
 
@@ -405,11 +492,23 @@ void LB_ssd1331_reset_screen(const struct bme280_data * data)
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BLACK);
 	sprintf((char *) message, "H: %.2f %%",data->humidity);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "P: %.0f mmHg",data->pressure * 0.0075);
+	sprintf((char *) message, "P: %.0f mmHg", (data->pressure * 0.0075));
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BLACK);
 }
 
-void LB_ssd1331_print_data(const struct bme280_data * data)
+void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data)
+{
+	uint8_t message[MAX_LEN_DATA];
+
+	sprintf((char *) message, "T: %.2f F", ((data->temperature * 1.8) + 32.0));
+	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BLACK);
+	sprintf((char *) message, "H: %.2f %%",data->humidity);
+	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BLACK);
+	sprintf((char *) message, "P: %.0f P",data->pressure);
+	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BLACK);
+}
+
+void LB_ssd1331_print_data_SI(const struct bme280_data * data)
 {
 	uint8_t message[MAX_LEN_DATA];
 
@@ -417,7 +516,20 @@ void LB_ssd1331_print_data(const struct bme280_data * data)
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, PURPLE);
 	sprintf((char *) message, "H: %.2f %%", data->humidity);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
-	sprintf((char *) message, "P: %.0f mmHg", data->pressure * 0.0075);
+	sprintf((char *) message, "P: %.0f mmHg", (data->pressure * 0.0075));
+	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);
+
+}
+
+void LB_ssd1331_print_data_Imperial(const struct bme280_data * data)
+{
+	uint8_t message[MAX_LEN_DATA];
+
+	sprintf((char *) message, "T: %.2f F", ((data->temperature * 1.8) + 32.0));
+	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, PURPLE);
+	sprintf((char *) message, "H: %.2f %%", data->humidity);
+	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
+	sprintf((char *) message, "P: %.0f P", data->pressure);
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);
 
 }
