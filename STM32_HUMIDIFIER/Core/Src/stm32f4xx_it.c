@@ -22,6 +22,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "LB_FSM_Humidifier.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -41,7 +42,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+extern EVENT_e FSM_Event;
+extern Joystick_t Joystick;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -270,7 +272,7 @@ void DMA2_Stream0_IRQHandler(void)
   /* USER CODE END DMA2_Stream0_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_adc1);
   /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
-
+  LB_DMA_Joystick_Event(&Joystick, &FSM_Event);
   /* USER CODE END DMA2_Stream0_IRQn 1 */
 }
 

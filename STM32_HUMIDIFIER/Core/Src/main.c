@@ -53,6 +53,7 @@
 #include "stdio.h"
 #include "string.h"
 #include "stdbool.h"
+#include "stm32f4xx_ll_exti.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,6 +80,9 @@
 #define LOGGING_FREQ_1 300			// 5 min
 #define LOGGING_FREQ_2 900			// 15 min
 #define LOGGING_FREQ_3 1800			// 30 min
+
+// FSM
+#define NON_DATE_N_TIME_SET_STATE(X) ( ((X) > state_set_date_d) || ((X) < state_set_time_h))
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -119,7 +123,8 @@ uint32_t total, free_space;
 
 // UI
 Joystick_t Joystick;
-Button_t Pressed;
+//Button_t Pressed;
+//extern DMA_HandleTypeDef hdma_adc1;
 
 // FSM
 STATE_e FSM_State = state_thp_screen;
@@ -184,6 +189,7 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 // UI
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+//void LB_DMA_Joystick_Event(DMA_HandleTypeDef *_hdma);
 
 // UART (BME280)
 void LB_send_mes_via_UART(char * string);
@@ -250,8 +256,10 @@ int main(void)
   LB_Init_Time(&time);
 
   // The initialization of UI
-  LB_Init_Button(&Pressed);
+  //LB_Init_Button(&Pressed);
   LB_ADC_Start_DMA(&hadc1, &Joystick);
+ // HAL_DMA_RegisterCallback(&hdma_adc1, HAL_DMA_XFER_HALFCPLT_CB_ID, &LB_DMA_Joystick_Event);
+
 
 
   // The initialization of humidity sensor
@@ -322,7 +330,9 @@ int main(void)
   while (1)
   {
 	  transition_table[FSM_State][FSM_Event]();
-	  __HAL_PWR_PVD_EXTI_ENABLE_IT();
+	  HAL_Delay(JOYSTICK_DELAY);
+	  LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_4);
+	  //__HAL_PWR_PVD_EXTI_ENABLE_IT();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -434,7 +444,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		}
 		FSM_Event = event_button_pressed;
 		//Pressed = true;
-		__HAL_PWR_PVD_EXTI_DISABLE_IT();
+		//__HAL_PWR_PVD_EXTI_DISABLE_IT();
+		LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_4);
 	}
 }
 
@@ -448,7 +459,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		//ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, END_OF_THE_LINE_TIME, H_LINE_OFFSET_Y, BLACK);	// old lines
 		//ssd1331_draw_line(DATE_OFFSET_X, D_LINE_OFFSET_Y, END_OF_THE_LINE_DATE, D_LINE_OFFSET_Y, BLACK);		// old lines
 		//ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);							// new lines
-		if (NEW_DAY == LB_Times_Ticking(&time))
+		if ( (NON_DATE_N_TIME_SET_STATE(FSM_State)) && ( NEW_DAY == LB_Times_Ticking(&time) ) )
 		{
 			//ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BLACK);				// new lines
 			LB_Next_Day(&today);
@@ -460,6 +471,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	}
 
 }
+
+/*void LB_DMA_Joystick_Event(const Joystick_t * p_Joystick, EVENT_e * p_event)
+{
+	if (JOYSTICK_LEFT(*p_Joystick))
+	{
+		*p_event = event_joystick_left;
+	}
+	else if (JOYSTICK_RIGHT(*p_Joystick))
+	{
+		*p_event = event_joystick_right;
+	}
+}*/
 
 // UART (BME280)
 void LB_send_mes_via_UART(char * string)
@@ -500,9 +523,9 @@ void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data)
 {
 	uint8_t message[MAX_LEN_DATA];
 
-	sprintf((char *) message, "T: %.2f F", ((data->temperature * 1.8) + 32.0));
+	sprintf((char *) message, "T: %.2f  F", ((data->temperature * 1.8) + 32.0));
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "H: %.2f %%",data->humidity);
+	sprintf((char *) message, "H: %.2f  %%",data->humidity);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BLACK);
 	sprintf((char *) message, "P: %.0f P",data->pressure);
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BLACK);
@@ -525,9 +548,9 @@ void LB_ssd1331_print_data_Imperial(const struct bme280_data * data)
 {
 	uint8_t message[MAX_LEN_DATA];
 
-	sprintf((char *) message, "T: %.2f F", ((data->temperature * 1.8) + 32.0));
+	sprintf((char *) message, "T: %.2f  F", ((data->temperature * 1.8) + 32.0));
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, PURPLE);
-	sprintf((char *) message, "H: %.2f %%", data->humidity);
+	sprintf((char *) message, "H: %.2f  %%", data->humidity);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
 	sprintf((char *) message, "P: %.0f P", data->pressure);
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);

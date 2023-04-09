@@ -18,10 +18,10 @@
 #define JOYSTICK_LOWER_LIMIT 1050
 #define JOYSTICK_UPPER_LIMIT 3050
 #define JOYSTICK_DELAY 268
-#define JOYSTICK_LEFT(X) (X.axis[0] < JOYSTICK_LOWER_LIMIT)
-#define JOYSTICK_RIGHT(X) (X.axis[0] > JOYSTICK_UPPER_LIMIT)
-#define JOYSTICK_UP(X) (X.axis[1] > JOYSTICK_UPPER_LIMIT)
-#define JOYSTICK_DOWN(X) (X.axis[1] < JOYSTICK_LOWER_LIMIT)
+#define JOYSTICK_LEFT(X) ((X).axis[0] < JOYSTICK_LOWER_LIMIT)
+#define JOYSTICK_RIGHT(X) ((X).axis[0] > JOYSTICK_UPPER_LIMIT)
+#define JOYSTICK_UP(X) ((X).axis[1] > JOYSTICK_UPPER_LIMIT)
+#define JOYSTICK_DOWN(X) ((X).axis[1] < JOYSTICK_LOWER_LIMIT)
 
 /* General type definitions --------------------------------------------------*/
 /* redefine Joystick_t as appropriate */
