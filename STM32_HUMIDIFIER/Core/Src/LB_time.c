@@ -130,6 +130,20 @@ bool LB_Times_Ticking(Time_t * ptime)
 		}
 		return false;
 }
+/**
+  * @brief  sets the clock of Time_t data type (time)
+  * @param  ptime points to an initialized Time_t data type (time)
+  * @param  hours specifies the number of hours to be set in Time_t data type (time)
+  * @param  minutes specifies the number of minutes to be set in Time_t data type (time)
+  * @param  seconds specifies the number of seconds to be set in Time_t data type (time)
+  * @retval None
+  */
+void LB_Set_Time(Time_t * ptime, uint8_t hours, uint8_t minutes, uint8_t seconds)
+{
+	ptime->time[0] = seconds;
+	ptime->time[1] = minutes;
+	ptime->time[2] = hours;
+}
 
 /**
   * @brief  sends formatted output to a string pointed to by the second argument

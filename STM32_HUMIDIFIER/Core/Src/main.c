@@ -53,20 +53,30 @@
 #include "stdio.h"
 #include "string.h"
 #include "stdbool.h"
-#include "stm32f4xx_ll_exti.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-// Temperature, humidity and pressure measurement
+// Ultrasonic membrane humidifier
+typedef struct membrane {
+	uint16_t membrane_active_counter;
+	uint16_t membrane_delay_counter;
+	bool membrane_is_active;
+} Membrane_t;
 
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+// Ultrasonic membrane humidifier
+#define MEMBRANE_DURATION 60		// 1 min
+#define MEMBRANE_DELAY 120			// 2 min
+#define HUMIDITY_LEVEL 50.0			// [%]
+
 // Data output
 #define MAX_LEN 50
 #define MAX_LEN_DATA 12
+
 // OLED
 #define T_CENTER_X 3
 #define T_CENTER_Y 10
@@ -77,12 +87,11 @@
 
 // SD CARD
 #define MAX_SD_CARD_BUFF 1024
-#define LOGGING_FREQ_1 300			// 5 min
-#define LOGGING_FREQ_2 900			// 15 min
-#define LOGGING_FREQ_3 1800			// 30 min
+#define LOGGING_FREQ_1 60			// 1 min
+#define LOGGING_FREQ_5 300			// 5 min
+#define LOGGING_FREQ_15 900			// 15 min
+#define LOGGING_FREQ_30 1800		// 30 min
 
-// FSM
-#define NON_DATE_N_TIME_SET_STATE(X) ( ((X) > state_set_date_d) || ((X) < state_set_time_h))
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -93,6 +102,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+// Ultrasonic membrane humidifier
+Membrane_t USM_Humidifier;
+
 // Date and time
 Time_t time;
 uint8_t message_time[9];
@@ -109,7 +121,9 @@ uint8_t thp_screen_counter = 0;
 volatile bool clock_screen_update = false;
 
 // SD CARD
-uint16_t logging_frequency = LOGGING_FREQ_1;
+Data_Logging_Period_e logging_index = logging_5_min;
+const uint16_t logging_period[PERIOD_MAX] = {LOGGING_FREQ_1, LOGGING_FREQ_5, LOGGING_FREQ_15, LOGGING_FREQ_30};
+uint16_t logging_counter = 0;
 char * logs_file_name = "logs.csv"; //char * logs_file_name = "logs.txt";
 FATFS fs;							// file system
 FIL fil;							// file
@@ -123,14 +137,13 @@ uint32_t total, free_space;
 
 // UI
 Joystick_t Joystick;
-//Button_t Pressed;
-//extern DMA_HandleTypeDef hdma_adc1;
+Button_t Joystick_Moved;
 
 // FSM
 STATE_e FSM_State = state_thp_screen;
 EVENT_e FSM_Event = event_none;
 
-TRANSITION_FUNC_PTR_t transition_table[STATE_MAX][EVENT_MAX] = {
+TRANSITION_FUNC_PTR_t LB_Transition_Table[STATE_MAX][EVENT_MAX] = {
 		[state_thp_screen]					[event_none]			=thp_screen,
 		[state_thp_screen]					[event_button_pressed]	=thp_screen,
 		[state_thp_screen]					[event_joystick_right]	=clock_screen,
@@ -187,9 +200,11 @@ TRANSITION_FUNC_PTR_t transition_table[STATE_MAX][EVENT_MAX] = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+// Ultrasonic membrane humidifier
+void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane);
+
 // UI
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
-//void LB_DMA_Joystick_Event(DMA_HandleTypeDef *_hdma);
 
 // UART (BME280)
 void LB_send_mes_via_UART(char * string);
@@ -206,6 +221,7 @@ void send_uart (char * string);	// to send the data to the uart
 int bufsize (char * buf);		// to find the size of data in the buffer
 void bufclear (void);			// to clear the buffer
 FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data);
+void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data, uint16_t * delay_in_seconds, Data_Logging_Period_e period);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -254,13 +270,11 @@ int main(void)
   // Initializations of date and time
   LB_Init_Date(&today);
   LB_Init_Time(&time);
+  LB_Set_Time(&time, 21, 26, 13);
 
   // The initialization of UI
-  //LB_Init_Button(&Pressed);
+  LB_Init_Button(&Joystick_Moved);
   LB_ADC_Start_DMA(&hadc1, &Joystick);
- // HAL_DMA_RegisterCallback(&hdma_adc1, HAL_DMA_XFER_HALFCPLT_CB_ID, &LB_DMA_Joystick_Event);
-
-
 
   // The initialization of humidity sensor
   if (BME280_OK != BME280_init(&bme280_sens_dev))
@@ -329,54 +343,13 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  transition_table[FSM_State][FSM_Event]();
-	  HAL_Delay(JOYSTICK_DELAY);
-	  LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_4);
-	  //__HAL_PWR_PVD_EXTI_ENABLE_IT();
+	  LB_Humidifier(&bme280_sens_data, &USM_Humidifier);
+	  LB_Data_Logging_Function(logs_file_name, &today, &time, &bme280_sens_data, &logging_counter, logging_index);
+	  LB_Transition_Table[FSM_State][FSM_Event]();
+	  LB_UI_Joystick_State_Refresh(&Joystick_Moved);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  //LB_ssd1331_reset_screen_SI(&bme280_sens_data);
-	  /*if (BME280_OK != BME280_read_data(&bme280_sens_dev, &bme280_sens_data))
-	  {
-		  //LB_send_mes_via_UART("A failure to read a data!\r\n");
-	  }
-	  else
-	  {
-		 // LB_ssd1331_print_data_SI(&bme280_sens_data);
-		  //LB_send_data_via_UART(&bme280_sens_data);
-		  LB_update_logs(logs_file_name, &today, &time, &bme280_sens_data);
-	  }*/
-	  /*if (Pressed)
-	  {
-		  //LB_send_mes_via_UART("SWITCH ON!\r\n");
-		  HAL_GPIO_TogglePin(Membrane_GPIO_Port, Membrane_Pin);
-		  __HAL_PWR_PVD_EXTI_ENABLE_IT();
-		  Pressed = false;
-
-	  }*/
-	  /* if (JOYSTICK_LEFT(Joystick))
-	  {
-		  LB_send_mes_via_UART("LEFT\r\n");
-	  }
-	  else if (JOYSTICK_RIGHT(Joystick))
-	  {
-		  LB_send_mes_via_UART("RIGHT\r\n");
-	  }
-	  else if (JOYSTICK_UP(Joystick))
-	  {
-		  LB_send_mes_via_UART("UP\r\n");
-	  }
-	  else if (JOYSTICK_DOWN(Joystick))
-	  {
-		  LB_send_mes_via_UART("DOWN\r\n");
-	  }
-	  else
-	  {
-		  LB_send_mes_via_UART("HOLD\r\n");
-	  }
-	  HAL_Delay(2500);*/
-
   }
   /* USER CODE END 3 */
 }
@@ -431,6 +404,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if (Joystick_button_Pin == GPIO_Pin)
 	{
+		LB_UI_Joystick_Switch_Pressed();
 		if (state_thp_screen == FSM_State)
 		{
 			if (SI == unit_system)
@@ -443,46 +417,56 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			}
 		}
 		FSM_Event = event_button_pressed;
-		//Pressed = true;
-		//__HAL_PWR_PVD_EXTI_DISABLE_IT();
-		LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_4);
 	}
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 
-	if (TIM10 == htim->Instance /*&& print_time == state*/)
+	if (TIM10 == htim->Instance)
 	{
+		if (USM_Humidifier.membrane_is_active)
+		{
+			USM_Humidifier.membrane_active_counter++;
+		}
+		else
+		{
+			USM_Humidifier.membrane_delay_counter++;
+		}
 		thp_screen_counter++;
 		clock_screen_update = true;
-		//ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, END_OF_THE_LINE_TIME, H_LINE_OFFSET_Y, BLACK);	// old lines
-		//ssd1331_draw_line(DATE_OFFSET_X, D_LINE_OFFSET_Y, END_OF_THE_LINE_DATE, D_LINE_OFFSET_Y, BLACK);		// old lines
-		//ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);							// new lines
-		if ( (NON_DATE_N_TIME_SET_STATE(FSM_State)) && ( NEW_DAY == LB_Times_Ticking(&time) ) )
+		if (NON_DATE_N_TIME_SET_STATE(FSM_State))
 		{
-			//ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BLACK);				// new lines
-			LB_Next_Day(&today);
-			//LB_Date_to_Str(&today, (char *) message_date);													// new lines
-			//ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, COLOR_DATE);		// new lines
+			if (NEW_DAY == LB_Times_Ticking(&time))
+			{
+				LB_Next_Day(&today);
+			}
+			if (state_set_data_logging_period != FSM_State)
+			{
+				logging_counter++;
+			}
 		}
-		//LB_Time_to_Str(&time, (char *) message_time);															// new lines
-		//ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, COLOR_TIME);						// new lines
 	}
-
 }
 
-/*void LB_DMA_Joystick_Event(const Joystick_t * p_Joystick, EVENT_e * p_event)
+void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane)
 {
-	if (JOYSTICK_LEFT(*p_Joystick))
+	if (MEMBRANE_DELAY <= p_membrane->membrane_delay_counter)
 	{
-		*p_event = event_joystick_left;
+		p_membrane->membrane_delay_counter = 0;
+		if (HUMIDITY_LEVEL > data->humidity)
+		{
+			HAL_GPIO_WritePin(Membrane_GPIO_Port, Membrane_Pin, GPIO_PIN_SET);
+			p_membrane->membrane_is_active = true;
+		}
 	}
-	else if (JOYSTICK_RIGHT(*p_Joystick))
+	if (MEMBRANE_DURATION <= p_membrane->membrane_active_counter)
 	{
-		*p_event = event_joystick_right;
+		p_membrane->membrane_active_counter = 0;
+		HAL_GPIO_WritePin(Membrane_GPIO_Port, Membrane_Pin, GPIO_PIN_RESET);
+		p_membrane->membrane_is_active = false;
 	}
-}*/
+}
 
 // UART (BME280)
 void LB_send_mes_via_UART(char * string)
@@ -541,7 +525,6 @@ void LB_ssd1331_print_data_SI(const struct bme280_data * data)
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
 	sprintf((char *) message, "P: %.0f mmHg", (data->pressure * 0.0075));
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);
-
 }
 
 void LB_ssd1331_print_data_Imperial(const struct bme280_data * data)
@@ -554,10 +537,18 @@ void LB_ssd1331_print_data_Imperial(const struct bme280_data * data)
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
 	sprintf((char *) message, "P: %.0f P", data->pressure);
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);
-
 }
 
 // SD CARD
+void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data, uint16_t * delay_in_seconds, Data_Logging_Period_e period)
+{
+	  if( logging_period[period] == (*delay_in_seconds) )
+	  {
+		  LB_update_logs(file_name, pdate, ptime, data);
+		  *delay_in_seconds = 0;
+	  }
+}
+
 void send_uart (char * string)
 {
 	uint8_t len = strlen(string);

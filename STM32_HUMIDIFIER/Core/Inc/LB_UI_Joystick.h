@@ -12,6 +12,7 @@
 #include <adc.h>
 #include <stdbool.h>
 #include <stm32f4xx_hal_def.h>
+#include <stm32f411xe.h>
 
 /* Program-specific declarations ---------------------------------------------*/
 #define DIMENSION 2					// the number of coordinates
@@ -48,4 +49,18 @@ HAL_StatusTypeDef LB_ADC_Start_DMA(ADC_HandleTypeDef* hadc, Joystick_t * pJoysti
   * @retval None
   */
 void LB_Init_Button(Button_t * pButton);
+
+/**
+  * @brief  enables EXTI interrupts on Line 4 and sets a Button_t data type to false (motionless or not pressed)
+  * @param  pButton points to the Button_t data type
+  * @retval None
+  */
+void LB_UI_Joystick_State_Refresh(Button_t * pButton);
+
+/**
+  * @brief  desables EXTI interrupts on Line 4
+  * @param  none
+  * @retval None
+  */
+void LB_UI_Joystick_Switch_Pressed(void);
 #endif /* INC_LB_UI_JOYSTICK_H_ */

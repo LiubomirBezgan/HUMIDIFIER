@@ -13,6 +13,7 @@
 // Date and time
 #include "LB_date.h"
 #include "LB_time.h"
+#include "LB_date&time_add.h"
 
 // Humidity sensor
 #include "bme280_defs.h"
@@ -21,8 +22,16 @@
 // UI
 #include "LB_UI_Joystick.h"
 
+// OLED
+#include "SSD1331.h"
+
 // Generic
 #include <stdint.h>
+#include <stdio.h>
+
+/* Program-specific declarations ---------------------------------------------*/
+#define REFRESH_FREQ 5
+#define NON_DATE_N_TIME_SET_STATE(X) ( ((X) > state_set_date_d) || ((X) < state_set_time_h))
 
 /* General type definitions --------------------------------------------------*/
 typedef enum {
@@ -46,6 +55,16 @@ typedef enum {
 	event_joystick_left,
 	EVENT_MAX
 } EVENT_e;
+
+// SD CARD
+typedef enum {
+	logging_1_min,
+	logging_5_min,
+	logging_15_min,
+	logging_30_min,
+	PERIOD_MAX
+} Data_Logging_Period_e;
+
 
 typedef void (*TRANSITION_FUNC_PTR_t)(void);
 
