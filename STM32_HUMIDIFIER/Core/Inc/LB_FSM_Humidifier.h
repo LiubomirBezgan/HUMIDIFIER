@@ -25,6 +25,9 @@
 // OLED
 #include "SSD1331.h"
 
+// USM Humidifier
+#include "LB_USM_Humidifier.h"
+
 // Generic
 #include <stdint.h>
 #include <stdio.h>
@@ -32,12 +35,18 @@
 /* Program-specific declarations ---------------------------------------------*/
 #define REFRESH_FREQ 5
 #define NON_DATE_N_TIME_SET_STATE(X) ( ((X) > state_set_date_d) || ((X) < state_set_time_h))
+#define DATA_LOGGING_COLOR_TEXT WHITE
+#define DATA_LOGGING_COLOR_DIGITS RED
 
 /* General type definitions --------------------------------------------------*/
 typedef enum {
 	state_thp_screen,
+	state_humidifier_screen,
 	state_clock_screen,
 	state_data_logging_period_screen,
+	state_set_humidity,
+	state_set_duration,
+	state_set_delay,
 	state_set_time_h,
 	state_set_time_m,
 	state_set_time_s,
@@ -56,17 +65,18 @@ typedef enum {
 	EVENT_MAX
 } EVENT_e;
 
+typedef void (*TRANSITION_FUNC_PTR_t)(void);
+
 // SD CARD
 typedef enum {
 	logging_1_min,
 	logging_5_min,
+	logging_10_min,
 	logging_15_min,
+	logging_20_min,
 	logging_30_min,
 	PERIOD_MAX
 } Data_Logging_Period_e;
-
-
-typedef void (*TRANSITION_FUNC_PTR_t)(void);
 
 /* Function prototypes -------------------------------------------------------*/
 /**
@@ -75,6 +85,13 @@ typedef void (*TRANSITION_FUNC_PTR_t)(void);
   * @retval None
   */
 void thp_screen(void);
+
+/**
+  * @brief  prints the humidifier parameters screen that shows target humidity level, the duration of membrane active state and delay between consequent hydrations
+  * @param  None
+  * @retval None
+  */
+void humidifier_screen(void);
 
 /**
   * @brief  prints the clock screen
@@ -89,6 +106,27 @@ void clock_screen(void);
   * @retval None
   */
 void data_logging_period_screen(void);
+
+/**
+  * @brief  sets the target humidity level and prints the corresponding screen
+  * @param  None
+  * @retval None
+  */
+void set_humidity(void);
+
+/**
+  * @brief  sets the duration of membrane active state and prints the corresponding screen
+  * @param  None
+  * @retval None
+  */
+void set_duration(void);
+
+/**
+  * @brief  sets the delay between consequent hydrations and prints the corresponding screen
+  * @param  None
+  * @retval None
+  */
+void set_delay(void);
 
 /**
   * @brief  sets hours

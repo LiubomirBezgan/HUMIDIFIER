@@ -49,6 +49,9 @@
 // FMS
 #include "LB_FSM_Humidifier.h"
 
+// Ultrasonic membrane humidifier
+#include "LB_FSM_Humidifier.h"
+
 // Generic
 #include "stdio.h"
 #include "string.h"
@@ -57,12 +60,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-// Ultrasonic membrane humidifier
-typedef struct membrane {
-	uint16_t membrane_active_counter;
-	uint16_t membrane_delay_counter;
-	bool membrane_is_active;
-} Membrane_t;
 
 /* USER CODE END PTD */
 
@@ -79,18 +76,20 @@ typedef struct membrane {
 
 // OLED
 #define T_CENTER_X 3
-#define T_CENTER_Y 10
-#define H_CENTER_X 3
-#define H_CENTER_Y 29
-#define P_CENTER_X 3
-#define P_CENTER_Y 48
+#define T_CENTER_Y 5
+#define H_CENTER_X T_CENTER_X
+#define H_CENTER_Y (T_CENTER_Y + 19)
+#define P_CENTER_X T_CENTER_X
+#define P_CENTER_Y (H_CENTER_Y + 19)
 
 // SD CARD
 #define MAX_SD_CARD_BUFF 1024
-#define LOGGING_FREQ_1 60			// 1 min
-#define LOGGING_FREQ_5 300			// 5 min
-#define LOGGING_FREQ_15 900			// 15 min
-#define LOGGING_FREQ_30 1800		// 30 min
+#define LOGGING_PERIOD_1 60			// 1 min
+#define LOGGING_PERIOD_5 300		// 5 min
+#define LOGGING_PERIOD_10 600		// 10 min
+#define LOGGING_PERIOD_15 900		// 15 min
+#define LOGGING_PERIOD_20 1200		// 20 min
+#define LOGGING_PERIOD_30 1800		// 30 min
 
 /* USER CODE END PD */
 
@@ -103,7 +102,11 @@ typedef struct membrane {
 
 /* USER CODE BEGIN PV */
 // Ultrasonic membrane humidifier
+USM_Humidifier_settings_t Membrane_parameters = {hum_lvl_50, hum_duration_10, hum_delay_5};
 Membrane_t USM_Humidifier;
+const uint8_t Hum_Level[HUM_LVL_MAX] = {HUM_LVL_35, HUM_LVL_40, HUM_LVL_45, HUM_LVL_50, HUM_LVL_55, HUM_LVL_60};
+const uint16_t Hum_Duration[HUM_DURATION_MAX] = {HUM_DURATION_05, HUM_DURATION_10, HUM_DURATION_15};
+const uint16_t Hum_Delay[HUM_DELAY_MAX] = {HUM_DELAY_1, HUM_DELAY_2, HUM_DELAY_5, HUM_DELAY_10, HUM_DELAY_15};
 
 // Date and time
 Time_t time;
@@ -114,6 +117,7 @@ uint8_t message_date[12];
 // Temperature, humidity and pressure measurement
 struct bme280_dev bme280_sens_dev;
 struct bme280_data bme280_sens_data;
+struct bme280_data bme280_sens_data_prev; // TODO: check it
 UNITS_e unit_system = SI;
 
 // OLED
@@ -122,7 +126,10 @@ volatile bool clock_screen_update = false;
 
 // SD CARD
 Data_Logging_Period_e logging_index = logging_5_min;
-const uint16_t logging_period[PERIOD_MAX] = {LOGGING_FREQ_1, LOGGING_FREQ_5, LOGGING_FREQ_15, LOGGING_FREQ_30};
+const uint16_t logging_period[PERIOD_MAX] = {
+		LOGGING_PERIOD_1, LOGGING_PERIOD_5, LOGGING_PERIOD_10,
+		LOGGING_PERIOD_15, LOGGING_PERIOD_20, LOGGING_PERIOD_30
+};
 uint16_t logging_counter = 0;
 char * logs_file_name = "logs.csv"; //char * logs_file_name = "logs.txt";
 FATFS fs;							// file system
@@ -146,18 +153,38 @@ EVENT_e FSM_Event = event_none;
 TRANSITION_FUNC_PTR_t LB_Transition_Table[STATE_MAX][EVENT_MAX] = {
 		[state_thp_screen]					[event_none]			=thp_screen,
 		[state_thp_screen]					[event_button_pressed]	=thp_screen,
-		[state_thp_screen]					[event_joystick_right]	=clock_screen,
+		[state_thp_screen]					[event_joystick_right]	=humidifier_screen,
 		[state_thp_screen]					[event_joystick_left]	=data_logging_period_screen,
+
+		[state_humidifier_screen]			[event_none]			=humidifier_screen,
+		[state_humidifier_screen]			[event_button_pressed]	=set_humidity,
+		[state_humidifier_screen]			[event_joystick_right]	=clock_screen,
+		[state_humidifier_screen]			[event_joystick_left]	=thp_screen,
 
 		[state_clock_screen]				[event_none]			=clock_screen,
 		[state_clock_screen]				[event_button_pressed]	=set_time_h,
 		[state_clock_screen]				[event_joystick_right]	=data_logging_period_screen,
-		[state_clock_screen]				[event_joystick_left]	=thp_screen,
+		[state_clock_screen]				[event_joystick_left]	=humidifier_screen,
 
 		[state_data_logging_period_screen]	[event_none]			=data_logging_period_screen,
 		[state_data_logging_period_screen]	[event_button_pressed]	=set_data_logging_period,
 		[state_data_logging_period_screen]	[event_joystick_right]	=thp_screen,
 		[state_data_logging_period_screen]	[event_joystick_left]	=clock_screen,
+
+		[state_set_humidity]				[event_none]			=set_humidity,
+		[state_set_humidity]				[event_button_pressed]	=set_duration,
+		[state_set_humidity]				[event_joystick_right]	=set_humidity,
+		[state_set_humidity]				[event_joystick_left]	=set_humidity,
+
+		[state_set_duration]				[event_none]			=set_duration,
+		[state_set_duration]				[event_button_pressed]	=set_delay,
+		[state_set_duration]				[event_joystick_right]	=set_duration,
+		[state_set_duration]				[event_joystick_left]	=set_duration,
+
+		[state_set_delay]					[event_none]			=set_delay,
+		[state_set_delay]					[event_button_pressed]	=humidifier_screen,
+		[state_set_delay]					[event_joystick_right]	=set_delay,
+		[state_set_delay]					[event_joystick_left]	=set_delay,
 
 		[state_set_time_h]					[event_none]			=set_time_h,
 		[state_set_time_h]					[event_button_pressed]	=set_date_d,
@@ -201,7 +228,7 @@ TRANSITION_FUNC_PTR_t LB_Transition_Table[STATE_MAX][EVENT_MAX] = {
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 // Ultrasonic membrane humidifier
-void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane);
+void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane, const USM_Humidifier_settings_t * p_USM_Hum_settings);
 
 // UI
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
@@ -343,7 +370,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  LB_Humidifier(&bme280_sens_data, &USM_Humidifier);
+	  LB_Humidifier(&bme280_sens_data, &USM_Humidifier, &Membrane_parameters);
 	  LB_Data_Logging_Function(logs_file_name, &today, &time, &bme280_sens_data, &logging_counter, logging_index);
 	  LB_Transition_Table[FSM_State][FSM_Event]();
 	  LB_UI_Joystick_State_Refresh(&Joystick_Moved);
@@ -449,18 +476,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	}
 }
 
-void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane)
+void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane, const USM_Humidifier_settings_t * p_USM_Hum_settings)
 {
-	if (MEMBRANE_DELAY <= p_membrane->membrane_delay_counter)
+	if (Hum_Delay[p_USM_Hum_settings->humidifier_delay] <= p_membrane->membrane_delay_counter)
 	{
 		p_membrane->membrane_delay_counter = 0;
-		if (HUMIDITY_LEVEL > data->humidity)
+		if (Hum_Level[p_USM_Hum_settings->target_hum_level] > data->humidity)
 		{
 			HAL_GPIO_WritePin(Membrane_GPIO_Port, Membrane_Pin, GPIO_PIN_SET);
 			p_membrane->membrane_is_active = true;
 		}
 	}
-	if (MEMBRANE_DURATION <= p_membrane->membrane_active_counter)
+	if (Hum_Duration[p_USM_Hum_settings->active_state_duration] <= p_membrane->membrane_active_counter)
 	{
 		p_membrane->membrane_active_counter = 0;
 		HAL_GPIO_WritePin(Membrane_GPIO_Port, Membrane_Pin, GPIO_PIN_RESET);
@@ -511,7 +538,7 @@ void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data)
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BLACK);
 	sprintf((char *) message, "H: %.2f  %%",data->humidity);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "P: %.0f P",data->pressure);
+	sprintf((char *) message, "P: %6.0f P",data->pressure);
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BLACK);
 }
 
@@ -535,7 +562,7 @@ void LB_ssd1331_print_data_Imperial(const struct bme280_data * data)
 	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, PURPLE);
 	sprintf((char *) message, "H: %.2f  %%", data->humidity);
 	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
-	sprintf((char *) message, "P: %.0f P", data->pressure);
+	sprintf((char *) message, "P: %6.0f P", data->pressure);
 	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);
 }
 

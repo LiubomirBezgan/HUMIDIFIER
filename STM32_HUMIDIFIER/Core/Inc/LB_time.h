@@ -1,5 +1,5 @@
 //  LB_time.h
-//  v1.0
+//  v1.1
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef _LB_TIME_H_

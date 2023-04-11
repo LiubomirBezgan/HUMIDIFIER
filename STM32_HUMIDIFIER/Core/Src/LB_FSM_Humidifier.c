@@ -26,6 +26,7 @@ extern EVENT_e FSM_Event;
 // Temperature, humidity and pressure measurement
 extern struct bme280_dev bme280_sens_dev;
 extern struct bme280_data bme280_sens_data;
+extern struct bme280_data bme280_sens_data_prev; // TODO: check it
 extern UNITS_e unit_system;
 
 // OLED
@@ -39,6 +40,13 @@ extern volatile bool clock_screen_update;
 // SD CARD
 extern uint16_t logging_period[];
 extern Data_Logging_Period_e logging_index;
+
+// USM Humidifier
+extern USM_Humidifier_settings_t Membrane_parameters;
+extern Membrane_t USM_Humidifier;
+extern const uint8_t Hum_Level[];
+extern const uint16_t Hum_Duration[];
+extern const uint16_t Hum_Delay[];
 
 /* Function prototypes -------------------------------------------------------*/
 
@@ -71,8 +79,12 @@ void thp_screen(void)
 			thp_screen_counter = 0;
 			if (SI == unit_system)
 			{
-				LB_ssd1331_reset_screen_SI(&bme280_sens_data);
+				/*LB_ssd1331_reset_screen_SI(&bme280_sens_data);
 				BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
+				LB_ssd1331_print_data_SI(&bme280_sens_data);*/
+				bme280_sens_data_prev = bme280_sens_data;
+				BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
+				LB_ssd1331_reset_screen_SI(&bme280_sens_data_prev);
 				LB_ssd1331_print_data_SI(&bme280_sens_data);
 			}
 			else
@@ -80,10 +92,39 @@ void thp_screen(void)
 				LB_ssd1331_reset_screen_Imperial(&bme280_sens_data);
 				BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
 				LB_ssd1331_print_data_Imperial(&bme280_sens_data);
+				/*bme280_sens_data_prev = bme280_sens_data;
+				BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
+				LB_ssd1331_reset_screen_Imperial(&bme280_sens_data_prev);
+				LB_ssd1331_print_data_Imperial(&bme280_sens_data);*/
 			}
 		}
 
 	}
+	FSM_Event = event_none;
+}
+
+/**
+  * @brief  prints the humidifier parameters screen that shows target humidity level, the duration of membrane active state and delay between consequent hydrations
+  * @param  None
+  * @retval None
+  */
+void humidifier_screen(void)
+{
+	uint8_t message_humidifier_screen[17];
+
+	FSM_State = state_humidifier_screen;
+	if (event_none != FSM_Event)
+	{
+		ssd1331_clear_screen(BLACK);
+	}
+
+	sprintf( (char *) message_humidifier_screen, "HUM LVL: %2u %%", Hum_Level[Membrane_parameters.target_hum_level]);
+	ssd1331_display_string(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y, message_humidifier_screen, FONT_1206, HUM_LVL_COLOR);
+	sprintf( (char *) message_humidifier_screen, "ACTIVE: %.1f min", ((float) Hum_Duration[Membrane_parameters.active_state_duration] / 60) );
+	ssd1331_display_string(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y, message_humidifier_screen, FONT_1206, HUM_DURATION_COLOR);
+	sprintf( (char *) message_humidifier_screen, "DELAY:   %2u min", (Hum_Delay[Membrane_parameters.humidifier_delay] / 60));
+	ssd1331_display_string(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y, message_humidifier_screen, FONT_1206, HUM_DELAY_COLOR);
+
 	FSM_Event = event_none;
 }
 
@@ -139,13 +180,123 @@ void data_logging_period_screen(void)
 	{
 		ssd1331_clear_screen(BLACK);
 	}
-	sprintf( (char *) message_logging_period, "   LOGGING");
-	ssd1331_display_string(DATA_LOGGING_CENTER_X, DATA_LOGGING_CENTER_Y, message_logging_period, FONT_1608, GOLDEN);
-	sprintf( (char *) message_logging_period, "   PERIOD:");
-	ssd1331_display_string(PERIOD_CENTER_X, PERIOD_CENTER_Y, message_logging_period, FONT_1608, GOLDEN);
-	sprintf( (char *) message_logging_period, "    %2d min", (logging_period[logging_index] / 60));
-	ssd1331_display_string(MIN_CENTER_X, MIN_CENTER_Y, message_logging_period, FONT_1608, GOLDEN);
+	sprintf( (char *) message_logging_period, "  LOGGING");
+	ssd1331_display_string(DATA_LOGGING_CENTER_X, DATA_LOGGING_CENTER_Y, message_logging_period, FONT_1608, DATA_LOGGING_COLOR_TEXT);
+	sprintf( (char *) message_logging_period, "  PERIOD:");
+	ssd1331_display_string(PERIOD_CENTER_X, PERIOD_CENTER_Y, message_logging_period, FONT_1608, DATA_LOGGING_COLOR_TEXT);
+	sprintf( (char *) message_logging_period, "   %2u min", (logging_period[logging_index] / 60));
+	ssd1331_display_string(LOG_MIN_CENTER_X, LOG_MIN_CENTER_Y, message_logging_period, FONT_1608, DATA_LOGGING_COLOR_DIGITS);
 
+	FSM_Event = event_none;
+}
+
+/**
+  * @brief  sets the target humidity level and prints the corresponding screen
+  * @param  None
+  * @retval None
+  */
+void set_humidity(void)
+{
+	uint8_t message_humidifier_screen[17];
+
+	FSM_State = state_set_humidity;
+	ssd1331_draw_line(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y + LINE_OFFSET_1206_Y, HUM_LVL_CENTER_X + LINE_LENGTH_HUM_LVL_X, HUM_LVL_CENTER_Y + LINE_OFFSET_1206_Y, HUM_LVL_COLOR);
+	if (JOYSTICK_UP(Joystick))
+	{
+		sprintf( (char *) message_humidifier_screen, "HUM LVL: %2u %%", Hum_Level[Membrane_parameters.target_hum_level]);
+		ssd1331_display_string(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		if (++(Membrane_parameters.target_hum_level) >= HUM_LVL_MAX)
+		{
+			Membrane_parameters.target_hum_level = 0;
+		}
+		sprintf( (char *) message_humidifier_screen, "HUM LVL: %2u %%", Hum_Level[Membrane_parameters.target_hum_level]);
+		ssd1331_display_string(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y, message_humidifier_screen, FONT_1206, HUM_LVL_COLOR);
+	}
+	else if (JOYSTICK_DOWN(Joystick))
+	{
+		sprintf( (char *) message_humidifier_screen, "HUM LVL: %2u %%", Hum_Level[Membrane_parameters.target_hum_level]);
+		ssd1331_display_string(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		if (0 == (Membrane_parameters.target_hum_level)--)
+		{
+			Membrane_parameters.target_hum_level = HUM_LVL_MAX - 1;
+		}
+		sprintf( (char *) message_humidifier_screen, "HUM LVL: %2u %%", Hum_Level[Membrane_parameters.target_hum_level]);
+		ssd1331_display_string(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y, message_humidifier_screen, FONT_1206, HUM_LVL_COLOR);
+	}
+	FSM_Event = event_none;
+}
+
+/**
+  * @brief  sets the duration of membrane active state and prints the corresponding screen
+  * @param  None
+  * @retval None
+  */
+void set_duration(void)
+{
+	uint8_t message_humidifier_screen[17];
+
+	FSM_State = state_set_duration;
+	ssd1331_draw_line(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y + LINE_OFFSET_1206_Y, HUM_LVL_CENTER_X + LINE_LENGTH_HUM_LVL_X, HUM_LVL_CENTER_Y + LINE_OFFSET_1206_Y, BLACK);
+	ssd1331_draw_line(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DURATION_CENTER_X + LINE_LENGTH_HUM_DURATION_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DURATION_COLOR);
+	if (JOYSTICK_UP(Joystick))
+	{
+		sprintf( (char *) message_humidifier_screen, "ACTIVE: %.1f min", ((float) Hum_Duration[Membrane_parameters.active_state_duration] / 60) );
+		ssd1331_display_string(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		if (++(Membrane_parameters.active_state_duration) >= HUM_DURATION_MAX)
+		{
+			Membrane_parameters.active_state_duration = 0;
+		}
+		sprintf( (char *) message_humidifier_screen, "ACTIVE: %.1f min", ((float) Hum_Duration[Membrane_parameters.active_state_duration] / 60) );
+		ssd1331_display_string(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y, message_humidifier_screen, FONT_1206, HUM_DURATION_COLOR);
+	}
+	else if (JOYSTICK_DOWN(Joystick))
+	{
+		sprintf( (char *) message_humidifier_screen, "ACTIVE: %.1f min", ((float) Hum_Duration[Membrane_parameters.active_state_duration] / 60) );
+		ssd1331_display_string(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		if (0 == (Membrane_parameters.active_state_duration)--)
+		{
+			Membrane_parameters.active_state_duration = HUM_DURATION_MAX - 1;
+		}
+		sprintf( (char *) message_humidifier_screen, "ACTIVE: %.1f min", ((float) Hum_Duration[Membrane_parameters.active_state_duration] / 60) );
+		ssd1331_display_string(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y, message_humidifier_screen, FONT_1206, HUM_DURATION_COLOR);
+	}
+	FSM_Event = event_none;
+}
+
+/**
+  * @brief  sets the delay between consequent hydrations and prints the corresponding screen
+  * @param  None
+  * @retval None
+  */
+void set_delay(void)
+{
+	uint8_t message_humidifier_screen[17];
+
+	FSM_State = state_set_delay;
+	ssd1331_draw_line(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DURATION_CENTER_X + LINE_LENGTH_HUM_DURATION_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, BLACK);
+	ssd1331_draw_line(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DELAY_CENTER_X + LINE_LENGTH_HUM_DELAY_X, HUM_DELAY_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DELAY_COLOR);
+	if (JOYSTICK_UP(Joystick))
+	{
+		sprintf( (char *) message_humidifier_screen, "DELAY:   %2u min", (Hum_Delay[Membrane_parameters.humidifier_delay] / 60));
+		ssd1331_display_string(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		if (++(Membrane_parameters.humidifier_delay) >= HUM_DELAY_MAX)
+		{
+			Membrane_parameters.humidifier_delay = 0;
+		}
+		sprintf( (char *) message_humidifier_screen, "DELAY:   %2u min", (Hum_Delay[Membrane_parameters.humidifier_delay] / 60));
+		ssd1331_display_string(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y, message_humidifier_screen, FONT_1206, HUM_DELAY_COLOR);
+	}
+	else if (JOYSTICK_DOWN(Joystick))
+	{
+		sprintf( (char *) message_humidifier_screen, "DELAY:   %2u min", (Hum_Delay[Membrane_parameters.humidifier_delay] / 60));
+		ssd1331_display_string(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		if (0 == (Membrane_parameters.humidifier_delay)--)
+		{
+			Membrane_parameters.humidifier_delay = HUM_DELAY_MAX - 1;
+		}
+		sprintf( (char *) message_humidifier_screen, "DELAY:   %2u min", (Hum_Delay[Membrane_parameters.humidifier_delay] / 60));
+		ssd1331_display_string(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y, message_humidifier_screen, FONT_1206, HUM_DELAY_COLOR);
+	}
 	FSM_Event = event_none;
 }
 
@@ -388,28 +539,28 @@ void set_data_logging_period(void)
 	uint8_t message_logging_period[11];
 
 	FSM_State = state_set_data_logging_period;
-	ssd1331_draw_line(33, 63, 48, 63, GOLDEN); // TODO: define line constants
+	ssd1331_draw_line(LINE_LOG_MINUTES_CENTER_X, LINE_LOG_MINUTES_CENTER_Y, EOL_LOG_MINUTES_LENGTH_X, LINE_LOG_MINUTES_CENTER_Y, DATA_LOGGING_COLOR_DIGITS);
 	if (JOYSTICK_UP(Joystick))
 	{
-		sprintf( (char *) message_logging_period, "    %2d min", (logging_period[logging_index] / 60));
-		ssd1331_display_string(MIN_CENTER_X, MIN_CENTER_Y, message_logging_period, FONT_1608, BLACK);
+		sprintf( (char *) message_logging_period, "   %2u min", (logging_period[logging_index] / 60));
+		ssd1331_display_string(LOG_MIN_CENTER_X, LOG_MIN_CENTER_Y, message_logging_period, FONT_1608, BLACK);
 		if (++logging_index >= PERIOD_MAX)
 		{
 			logging_index = 0;
 		}
-		sprintf( (char *) message_logging_period, "    %2d min", (logging_period[logging_index] / 60));
-		ssd1331_display_string(MIN_CENTER_X, MIN_CENTER_Y, message_logging_period, FONT_1608, GOLDEN);
+		sprintf( (char *) message_logging_period, "   %2u min", (logging_period[logging_index] / 60));
+		ssd1331_display_string(LOG_MIN_CENTER_X, LOG_MIN_CENTER_Y, message_logging_period, FONT_1608, DATA_LOGGING_COLOR_DIGITS);
 	}
 	else if (JOYSTICK_DOWN(Joystick))
 	{
-		sprintf( (char *) message_logging_period, "    %2d min", (logging_period[logging_index] / 60));
-		ssd1331_display_string(MIN_CENTER_X, MIN_CENTER_Y, message_logging_period, FONT_1608, BLACK);
+		sprintf( (char *) message_logging_period, "   %2u min", (logging_period[logging_index] / 60));
+		ssd1331_display_string(LOG_MIN_CENTER_X, LOG_MIN_CENTER_Y, message_logging_period, FONT_1608, BLACK);
 		if (0 == logging_index--)
 		{
 			logging_index = PERIOD_MAX - 1;
 		}
-		sprintf( (char *) message_logging_period, "    %2d min", (logging_period[logging_index] / 60));
-		ssd1331_display_string(MIN_CENTER_X, MIN_CENTER_Y, message_logging_period, FONT_1608, GOLDEN);
+		sprintf( (char *) message_logging_period, "   %2u min", (logging_period[logging_index] / 60));
+		ssd1331_display_string(LOG_MIN_CENTER_X, LOG_MIN_CENTER_Y, message_logging_period, FONT_1608, DATA_LOGGING_COLOR_DIGITS);
 	}
 	FSM_Event = event_none;
 }
