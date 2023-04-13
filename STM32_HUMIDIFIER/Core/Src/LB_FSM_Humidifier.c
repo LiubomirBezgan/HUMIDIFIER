@@ -8,12 +8,13 @@
 /* Includes ------------------------------------------------------------------*/
 // Main
 #include <LB_FSM_Humidifier.h>
+#include "LB_OLED_Humidifier.h"
 
 // Date and time
 extern Time_t time;
-extern uint8_t message_time[9];
+uint8_t message_time[9];
 extern Date_t today;
-extern uint8_t message_date[12];
+uint8_t message_date[12];
 
 // UI
 extern Joystick_t Joystick;
@@ -26,14 +27,10 @@ extern EVENT_e FSM_Event;
 // Temperature, humidity and pressure measurement
 extern struct bme280_dev bme280_sens_dev;
 extern struct bme280_data bme280_sens_data;
-extern struct bme280_data bme280_sens_data_prev; // TODO: check it
+struct bme280_data bme280_sens_data_prev;
 extern UNITS_e unit_system;
 
 // OLED
-extern void LB_ssd1331_print_data_SI(const struct bme280_data * data);
-extern void LB_ssd1331_print_data_Imperial(const struct bme280_data * data);
-extern void LB_ssd1331_reset_screen_SI(const struct bme280_data * data);
-extern void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data);
 extern uint8_t thp_screen_counter;
 extern volatile bool clock_screen_update;
 
@@ -44,9 +41,9 @@ extern Data_Logging_Period_e logging_index;
 // USM Humidifier
 extern USM_Humidifier_settings_t Membrane_parameters;
 extern Membrane_t USM_Humidifier;
-extern const uint8_t Hum_Level[];
-extern const uint16_t Hum_Duration[];
-extern const uint16_t Hum_Delay[];
+const uint8_t Hum_Level[HUM_LVL_MAX] = {HUM_LVL_35, HUM_LVL_40, HUM_LVL_45, HUM_LVL_50, HUM_LVL_55, HUM_LVL_60};
+const uint16_t Hum_Duration[HUM_DURATION_MAX] = {HUM_DURATION_05, HUM_DURATION_10, HUM_DURATION_15};
+const uint16_t Hum_Delay[HUM_DELAY_MAX] = {HUM_DELAY_1, HUM_DELAY_2, HUM_DELAY_5, HUM_DELAY_10, HUM_DELAY_15};
 
 /* Function prototypes -------------------------------------------------------*/
 
@@ -60,7 +57,7 @@ void thp_screen(void)
 	FSM_State = state_thp_screen;
 	if (event_none != FSM_Event)
 	{
-		ssd1331_clear_screen(BLACK);
+		ssd1331_clear_screen(BACKGROUND_COLOR);
 		BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
 		if (SI == unit_system)
 		{
@@ -79,23 +76,17 @@ void thp_screen(void)
 			thp_screen_counter = 0;
 			if (SI == unit_system)
 			{
-				/*LB_ssd1331_reset_screen_SI(&bme280_sens_data);
-				BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
-				LB_ssd1331_print_data_SI(&bme280_sens_data);*/
 				bme280_sens_data_prev = bme280_sens_data;
-				BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
+				BME280_read_data(&bme280_sens_dev, &bme280_sens_data);
 				LB_ssd1331_reset_screen_SI(&bme280_sens_data_prev);
 				LB_ssd1331_print_data_SI(&bme280_sens_data);
 			}
 			else
 			{
-				LB_ssd1331_reset_screen_Imperial(&bme280_sens_data);
-				BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
-				LB_ssd1331_print_data_Imperial(&bme280_sens_data);
-				/*bme280_sens_data_prev = bme280_sens_data;
-				BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
+				bme280_sens_data_prev = bme280_sens_data;
+				BME280_read_data(&bme280_sens_dev, &bme280_sens_data);
 				LB_ssd1331_reset_screen_Imperial(&bme280_sens_data_prev);
-				LB_ssd1331_print_data_Imperial(&bme280_sens_data);*/
+				LB_ssd1331_print_data_Imperial(&bme280_sens_data);
 			}
 		}
 
@@ -115,7 +106,7 @@ void humidifier_screen(void)
 	FSM_State = state_humidifier_screen;
 	if (event_none != FSM_Event)
 	{
-		ssd1331_clear_screen(BLACK);
+		ssd1331_clear_screen(BACKGROUND_COLOR);
 	}
 
 	sprintf( (char *) message_humidifier_screen, "HUM LVL: %2u %%", Hum_Level[Membrane_parameters.target_hum_level]);
@@ -139,7 +130,7 @@ void clock_screen(void)
 
 	if (event_none != FSM_Event)
 	{
-		ssd1331_clear_screen(BLACK);
+		ssd1331_clear_screen(BACKGROUND_COLOR);
 		LB_Date_to_Str(&today, (char *) message_date);
 		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, COLOR_DATE);
 		LB_Time_to_Str(&time, (char *) message_time);
@@ -147,14 +138,14 @@ void clock_screen(void)
 	}
 	else
 	{
-		ssd1331_draw_line(DATE_OFFSET_X, D_LINE_OFFSET_Y, END_OF_THE_LINE_DATE, D_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(DATE_OFFSET_X, D_LINE_OFFSET_Y, END_OF_THE_LINE_DATE, D_LINE_OFFSET_Y, BACKGROUND_COLOR);
 		if (clock_screen_update)
 		{
-			ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BLACK);
+			ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BACKGROUND_COLOR);
 			LB_Date_to_Str(&today, (char *) message_date);
 			ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, COLOR_DATE);
 
-			ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);
+			ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BACKGROUND_COLOR);
 			LB_Time_to_Str(&time, (char *) message_time);
 			ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, COLOR_TIME);
 
@@ -178,7 +169,7 @@ void data_logging_period_screen(void)
 
 	if (event_none != FSM_Event)
 	{
-		ssd1331_clear_screen(BLACK);
+		ssd1331_clear_screen(BACKGROUND_COLOR);
 	}
 	sprintf( (char *) message_logging_period, "  LOGGING");
 	ssd1331_display_string(DATA_LOGGING_CENTER_X, DATA_LOGGING_CENTER_Y, message_logging_period, FONT_1608, DATA_LOGGING_COLOR_TEXT);
@@ -204,7 +195,7 @@ void set_humidity(void)
 	if (JOYSTICK_UP(Joystick))
 	{
 		sprintf( (char *) message_humidifier_screen, "HUM LVL: %2u %%", Hum_Level[Membrane_parameters.target_hum_level]);
-		ssd1331_display_string(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		ssd1331_display_string(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y, message_humidifier_screen, FONT_1206, BACKGROUND_COLOR);
 		if (++(Membrane_parameters.target_hum_level) >= HUM_LVL_MAX)
 		{
 			Membrane_parameters.target_hum_level = 0;
@@ -215,7 +206,7 @@ void set_humidity(void)
 	else if (JOYSTICK_DOWN(Joystick))
 	{
 		sprintf( (char *) message_humidifier_screen, "HUM LVL: %2u %%", Hum_Level[Membrane_parameters.target_hum_level]);
-		ssd1331_display_string(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		ssd1331_display_string(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y, message_humidifier_screen, FONT_1206, BACKGROUND_COLOR);
 		if (0 == (Membrane_parameters.target_hum_level)--)
 		{
 			Membrane_parameters.target_hum_level = HUM_LVL_MAX - 1;
@@ -236,12 +227,12 @@ void set_duration(void)
 	uint8_t message_humidifier_screen[17];
 
 	FSM_State = state_set_duration;
-	ssd1331_draw_line(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y + LINE_OFFSET_1206_Y, HUM_LVL_CENTER_X + LINE_LENGTH_HUM_LVL_X, HUM_LVL_CENTER_Y + LINE_OFFSET_1206_Y, BLACK);
+	ssd1331_draw_line(HUM_LVL_CENTER_X, HUM_LVL_CENTER_Y + LINE_OFFSET_1206_Y, HUM_LVL_CENTER_X + LINE_LENGTH_HUM_LVL_X, HUM_LVL_CENTER_Y + LINE_OFFSET_1206_Y, BACKGROUND_COLOR);
 	ssd1331_draw_line(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DURATION_CENTER_X + LINE_LENGTH_HUM_DURATION_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DURATION_COLOR);
 	if (JOYSTICK_UP(Joystick))
 	{
 		sprintf( (char *) message_humidifier_screen, "ACTIVE: %.1f min", ((float) Hum_Duration[Membrane_parameters.active_state_duration] / 60) );
-		ssd1331_display_string(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		ssd1331_display_string(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y, message_humidifier_screen, FONT_1206, BACKGROUND_COLOR);
 		if (++(Membrane_parameters.active_state_duration) >= HUM_DURATION_MAX)
 		{
 			Membrane_parameters.active_state_duration = 0;
@@ -252,7 +243,7 @@ void set_duration(void)
 	else if (JOYSTICK_DOWN(Joystick))
 	{
 		sprintf( (char *) message_humidifier_screen, "ACTIVE: %.1f min", ((float) Hum_Duration[Membrane_parameters.active_state_duration] / 60) );
-		ssd1331_display_string(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		ssd1331_display_string(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y, message_humidifier_screen, FONT_1206, BACKGROUND_COLOR);
 		if (0 == (Membrane_parameters.active_state_duration)--)
 		{
 			Membrane_parameters.active_state_duration = HUM_DURATION_MAX - 1;
@@ -273,12 +264,12 @@ void set_delay(void)
 	uint8_t message_humidifier_screen[17];
 
 	FSM_State = state_set_delay;
-	ssd1331_draw_line(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DURATION_CENTER_X + LINE_LENGTH_HUM_DURATION_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, BLACK);
+	ssd1331_draw_line(HUM_DURATION_CENTER_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DURATION_CENTER_X + LINE_LENGTH_HUM_DURATION_X, HUM_DURATION_CENTER_Y + LINE_OFFSET_1206_Y, BACKGROUND_COLOR);
 	ssd1331_draw_line(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DELAY_CENTER_X + LINE_LENGTH_HUM_DELAY_X, HUM_DELAY_CENTER_Y + LINE_OFFSET_1206_Y, HUM_DELAY_COLOR);
 	if (JOYSTICK_UP(Joystick))
 	{
 		sprintf( (char *) message_humidifier_screen, "DELAY:   %2u min", (Hum_Delay[Membrane_parameters.humidifier_delay] / 60));
-		ssd1331_display_string(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		ssd1331_display_string(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y, message_humidifier_screen, FONT_1206, BACKGROUND_COLOR);
 		if (++(Membrane_parameters.humidifier_delay) >= HUM_DELAY_MAX)
 		{
 			Membrane_parameters.humidifier_delay = 0;
@@ -289,7 +280,7 @@ void set_delay(void)
 	else if (JOYSTICK_DOWN(Joystick))
 	{
 		sprintf( (char *) message_humidifier_screen, "DELAY:   %2u min", (Hum_Delay[Membrane_parameters.humidifier_delay] / 60));
-		ssd1331_display_string(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y, message_humidifier_screen, FONT_1206, BLACK);
+		ssd1331_display_string(HUM_DELAY_CENTER_X, HUM_DELAY_CENTER_Y, message_humidifier_screen, FONT_1206, BACKGROUND_COLOR);
 		if (0 == (Membrane_parameters.humidifier_delay)--)
 		{
 			Membrane_parameters.humidifier_delay = HUM_DELAY_MAX - 1;
@@ -311,25 +302,25 @@ void set_time_h(void)
 
 	if (event_joystick_left == FSM_Event)
 	{
-		ssd1331_draw_line(M_LINE_OFFSET_X, M_LINE_OFFSET_Y, M_LINE_OFFSET_X + LINE_LENGTH_X, M_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(M_LINE_OFFSET_X, M_LINE_OFFSET_Y, M_LINE_OFFSET_X + LINE_LENGTH_X, M_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 	else if (event_joystick_right == FSM_Event)
 	{
-		ssd1331_draw_line(S_LINE_OFFSET_X, S_LINE_OFFSET_Y, S_LINE_OFFSET_X + LINE_LENGTH_X, S_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(S_LINE_OFFSET_X, S_LINE_OFFSET_Y, S_LINE_OFFSET_X + LINE_LENGTH_X, S_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 
 	ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, H_LINE_OFFSET_X + LINE_LENGTH_X, H_LINE_OFFSET_Y, COLOR_TIME);
 
 	if (JOYSTICK_UP(Joystick))
 	{
-		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);
+		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BACKGROUND_COLOR);
 		LB_Set_Next_Hour(&time);
 		LB_Time_to_Str(&time, (char *) message_time);
 		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, COLOR_TIME);
 	}
 	else if (JOYSTICK_DOWN(Joystick))
 	{
-		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);
+		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BACKGROUND_COLOR);
 		LB_Set_Prev_Hour(&time);
 		LB_Time_to_Str(&time, (char *) message_time);
 		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, COLOR_TIME);
@@ -349,25 +340,25 @@ void set_time_m(void)
 
 	if (event_joystick_left == FSM_Event)
 	{
-		ssd1331_draw_line(S_LINE_OFFSET_X, S_LINE_OFFSET_Y, S_LINE_OFFSET_X + LINE_LENGTH_X, S_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(S_LINE_OFFSET_X, S_LINE_OFFSET_Y, S_LINE_OFFSET_X + LINE_LENGTH_X, S_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 	else if (event_joystick_right == FSM_Event)
 	{
-		ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, H_LINE_OFFSET_X + LINE_LENGTH_X, H_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, H_LINE_OFFSET_X + LINE_LENGTH_X, H_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 
 	ssd1331_draw_line(M_LINE_OFFSET_X, M_LINE_OFFSET_Y, M_LINE_OFFSET_X + LINE_LENGTH_X, M_LINE_OFFSET_Y, COLOR_TIME);
 
 	if (JOYSTICK_UP(Joystick))
 	{
-		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);
+		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BACKGROUND_COLOR);
 		LB_Set_Next_Minute(&time);
 		LB_Time_to_Str(&time, (char *) message_time);
 		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, COLOR_TIME);
 	}
 	else if (JOYSTICK_DOWN(Joystick))
 	{
-		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);
+		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BACKGROUND_COLOR);
 		LB_Set_Prev_Minute(&time);
 		LB_Time_to_Str(&time, (char *) message_time);
 		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, COLOR_TIME);
@@ -387,25 +378,25 @@ void set_time_s(void)
 
 	if (event_joystick_left == FSM_Event)
 	{
-		ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, H_LINE_OFFSET_X + LINE_LENGTH_X, H_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, H_LINE_OFFSET_X + LINE_LENGTH_X, H_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 	else if (event_joystick_right == FSM_Event)
 	{
-		ssd1331_draw_line(M_LINE_OFFSET_X, M_LINE_OFFSET_Y, M_LINE_OFFSET_X + LINE_LENGTH_X, M_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(M_LINE_OFFSET_X, M_LINE_OFFSET_Y, M_LINE_OFFSET_X + LINE_LENGTH_X, M_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 
 	ssd1331_draw_line(S_LINE_OFFSET_X, S_LINE_OFFSET_Y, S_LINE_OFFSET_X + LINE_LENGTH_X, S_LINE_OFFSET_Y, COLOR_TIME);
 
 	if (JOYSTICK_UP(Joystick))
 	{
-		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);
+		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BACKGROUND_COLOR);
 		LB_Set_Next_Second(&time);
 		LB_Time_to_Str(&time, (char *) message_time);
 		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, COLOR_TIME);
 	}
 	else if (JOYSTICK_DOWN(Joystick))
 	{
-		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BLACK);
+		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, BACKGROUND_COLOR);
 		LB_Set_Prev_Second(&time);
 		LB_Time_to_Str(&time, (char *) message_time);
 		ssd1331_display_string(CENTER_X, CENTER_Y, message_time, FONT_1608, COLOR_TIME);
@@ -425,25 +416,25 @@ void set_date_y(void)
 
 	if (event_joystick_left == FSM_Event)
 	{
-		ssd1331_draw_line(D_LINE_OFFSET_X, D_LINE_OFFSET_Y, D_LINE_OFFSET_X + LINE_LENGTH_DAY_X, D_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(D_LINE_OFFSET_X, D_LINE_OFFSET_Y, D_LINE_OFFSET_X + LINE_LENGTH_DAY_X, D_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 	else if (event_joystick_right == FSM_Event)
 	{
-		ssd1331_draw_line(MONTH_LINE_OFFSET_X, MONTH_LINE_OFFSET_Y, MONTH_LINE_OFFSET_X + LINE_LENGTH_MONTH_X, MONTH_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(MONTH_LINE_OFFSET_X, MONTH_LINE_OFFSET_Y, MONTH_LINE_OFFSET_X + LINE_LENGTH_MONTH_X, MONTH_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 
 	ssd1331_draw_line(Y_LINE_OFFSET_X, Y_LINE_OFFSET_Y, Y_LINE_OFFSET_X + LINE_LENGTH_YEAR_X, Y_LINE_OFFSET_Y, COLOR_DATE);
 
 	if (JOYSTICK_UP(Joystick))
 	{
-		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BLACK);
+		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BACKGROUND_COLOR);
 		LB_Next_Year(&today);
 		LB_Date_to_Str(&today, (char *) message_date);
 		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, COLOR_DATE);
 	}
 	else if (JOYSTICK_DOWN(Joystick))
 	{
-		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BLACK);
+		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BACKGROUND_COLOR);
 		LB_Prev_Year(&today);
 		LB_Date_to_Str(&today, (char *) message_date);
 		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, COLOR_DATE);
@@ -463,25 +454,25 @@ void set_date_m(void)
 
 	if (event_joystick_left == FSM_Event)
 	{
-		ssd1331_draw_line(Y_LINE_OFFSET_X, Y_LINE_OFFSET_Y, Y_LINE_OFFSET_X + LINE_LENGTH_YEAR_X, Y_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(Y_LINE_OFFSET_X, Y_LINE_OFFSET_Y, Y_LINE_OFFSET_X + LINE_LENGTH_YEAR_X, Y_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 	else if (event_joystick_right == FSM_Event)
 	{
-		 ssd1331_draw_line(D_LINE_OFFSET_X, D_LINE_OFFSET_Y, D_LINE_OFFSET_X + LINE_LENGTH_DAY_X, D_LINE_OFFSET_Y, BLACK);
+		 ssd1331_draw_line(D_LINE_OFFSET_X, D_LINE_OFFSET_Y, D_LINE_OFFSET_X + LINE_LENGTH_DAY_X, D_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 
 	ssd1331_draw_line(MONTH_LINE_OFFSET_X, MONTH_LINE_OFFSET_Y, MONTH_LINE_OFFSET_X + LINE_LENGTH_MONTH_X, MONTH_LINE_OFFSET_Y, COLOR_DATE);
 
 	if (JOYSTICK_UP(Joystick))
 	{
-		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BLACK);
+		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BACKGROUND_COLOR);
 		LB_Next_Month(&today);
 		LB_Date_to_Str(&today, (char *) message_date);
 		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, COLOR_DATE);
 	}
 	else if (JOYSTICK_DOWN(Joystick))
 	{
-		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BLACK);
+		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BACKGROUND_COLOR);
 		LB_Prev_Month(&today);
 		LB_Date_to_Str(&today, (char *) message_date);
 		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, COLOR_DATE);
@@ -501,26 +492,26 @@ void set_date_d(void)
 
 	if (event_joystick_left == FSM_Event)
 	{
-		ssd1331_draw_line(MONTH_LINE_OFFSET_X, MONTH_LINE_OFFSET_Y, MONTH_LINE_OFFSET_X + LINE_LENGTH_MONTH_X, MONTH_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(MONTH_LINE_OFFSET_X, MONTH_LINE_OFFSET_Y, MONTH_LINE_OFFSET_X + LINE_LENGTH_MONTH_X, MONTH_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 	else if (event_joystick_right == FSM_Event)
 	{
-		ssd1331_draw_line(Y_LINE_OFFSET_X, Y_LINE_OFFSET_Y, Y_LINE_OFFSET_X + LINE_LENGTH_YEAR_X, Y_LINE_OFFSET_Y, BLACK);
+		ssd1331_draw_line(Y_LINE_OFFSET_X, Y_LINE_OFFSET_Y, Y_LINE_OFFSET_X + LINE_LENGTH_YEAR_X, Y_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	}
 
-	ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, END_OF_THE_LINE_TIME, H_LINE_OFFSET_Y, BLACK);
+	ssd1331_draw_line(H_LINE_OFFSET_X, H_LINE_OFFSET_Y, END_OF_THE_LINE_TIME, H_LINE_OFFSET_Y, BACKGROUND_COLOR);
 	ssd1331_draw_line(D_LINE_OFFSET_X, D_LINE_OFFSET_Y, D_LINE_OFFSET_X + LINE_LENGTH_DAY_X, D_LINE_OFFSET_Y, COLOR_DATE);
 
 	if (JOYSTICK_UP(Joystick))
 	{
-		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BLACK);
+		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BACKGROUND_COLOR);
 		LB_Next_Day(&today);
 		LB_Date_to_Str(&today, (char *) message_date);
 		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, COLOR_DATE);
 	}
 	else if (JOYSTICK_DOWN(Joystick))
 	{
-		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BLACK);
+		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, BACKGROUND_COLOR);
 		LB_Prev_Day(&today);
 		LB_Date_to_Str(&today, (char *) message_date);
 		ssd1331_display_string(DATE_OFFSET_X, DATE_OFFSET_Y, message_date, FONT_1608, COLOR_DATE);
@@ -543,7 +534,7 @@ void set_data_logging_period(void)
 	if (JOYSTICK_UP(Joystick))
 	{
 		sprintf( (char *) message_logging_period, "   %2u min", (logging_period[logging_index] / 60));
-		ssd1331_display_string(LOG_MIN_CENTER_X, LOG_MIN_CENTER_Y, message_logging_period, FONT_1608, BLACK);
+		ssd1331_display_string(LOG_MIN_CENTER_X, LOG_MIN_CENTER_Y, message_logging_period, FONT_1608, BACKGROUND_COLOR);
 		if (++logging_index >= PERIOD_MAX)
 		{
 			logging_index = 0;
@@ -554,7 +545,7 @@ void set_data_logging_period(void)
 	else if (JOYSTICK_DOWN(Joystick))
 	{
 		sprintf( (char *) message_logging_period, "   %2u min", (logging_period[logging_index] / 60));
-		ssd1331_display_string(LOG_MIN_CENTER_X, LOG_MIN_CENTER_Y, message_logging_period, FONT_1608, BLACK);
+		ssd1331_display_string(LOG_MIN_CENTER_X, LOG_MIN_CENTER_Y, message_logging_period, FONT_1608, BACKGROUND_COLOR);
 		if (0 == logging_index--)
 		{
 			logging_index = PERIOD_MAX - 1;
@@ -585,4 +576,96 @@ void LB_DMA_Joystick_Event(const Joystick_t * p_Joystick, EVENT_e * p_event)
 			Joystick_Moved = true;
 		}
 	}
+}
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane, const USM_Humidifier_settings_t * p_USM_Hum_settings)
+{
+	if (Hum_Delay[p_USM_Hum_settings->humidifier_delay] <= p_membrane->membrane_delay_counter)
+	{
+		p_membrane->membrane_delay_counter = 0;
+		if (Hum_Level[p_USM_Hum_settings->target_hum_level] > data->humidity)
+		{
+			HAL_GPIO_WritePin(Membrane_GPIO_Port, Membrane_Pin, GPIO_PIN_SET);
+			p_membrane->membrane_is_active = true;
+		}
+	}
+	if (Hum_Duration[p_USM_Hum_settings->active_state_duration] <= p_membrane->membrane_active_counter)
+	{
+		p_membrane->membrane_active_counter = 0;
+		HAL_GPIO_WritePin(Membrane_GPIO_Port, Membrane_Pin, GPIO_PIN_RESET);
+		p_membrane->membrane_is_active = false;
+	}
+}
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_ssd1331_reset_screen_SI(const struct bme280_data * data)
+{
+	uint8_t message[MAX_LEN_DATA];
+
+	sprintf((char *) message, "T: %.2f C",data->temperature);
+	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BACKGROUND_COLOR);
+	sprintf((char *) message, "H: %.2f %%",data->humidity);
+	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BACKGROUND_COLOR);
+	sprintf((char *) message, "P: %.0f mmHg", (data->pressure * 0.0075));
+	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BACKGROUND_COLOR);
+}
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data)
+{
+	uint8_t message[MAX_LEN_DATA];
+
+	sprintf((char *) message, "T: %.2f  F", ((data->temperature * 1.8) + 32.0));
+	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BACKGROUND_COLOR);
+	sprintf((char *) message, "H: %.2f  %%",data->humidity);
+	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BACKGROUND_COLOR);
+	sprintf((char *) message, "P: %6.0f P",data->pressure);
+	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BACKGROUND_COLOR);
+}
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_ssd1331_print_data_SI(const struct bme280_data * data)
+{
+	uint8_t message[MAX_LEN_DATA];
+
+	sprintf((char *) message, "T: %.2f C", data->temperature);
+	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, T_COLOR);
+	sprintf((char *) message, "H: %.2f %%", data->humidity);
+	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, H_COLOR);
+	sprintf((char *) message, "P: %.0f mmHg", (data->pressure * 0.0075));
+	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, P_COLOR);
+}
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_ssd1331_print_data_Imperial(const struct bme280_data * data)
+{
+	uint8_t message[MAX_LEN_DATA];
+
+	sprintf((char *) message, "T: %.2f  F", ((data->temperature * 1.8) + 32.0));
+	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, T_COLOR);
+	sprintf((char *) message, "H: %.2f  %%", data->humidity);
+	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, H_COLOR);
+	sprintf((char *) message, "P: %6.0f P", data->pressure);
+	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, P_COLOR);
 }

@@ -13,6 +13,11 @@
 #include <stdint.h>
 
 /* Program-specific declarations ---------------------------------------------*/
+// Ultrasonic membrane humidifier
+#define MEMBRANE_DURATION 60		// 1 min
+#define MEMBRANE_DELAY 120			// 2 min
+#define HUMIDITY_LEVEL 50.0			// [%]
+
 // OLED
 #define HUM_LVL_COLOR LIGHT_SEA_GREEN
 #define HUM_DURATION_COLOR DARK_ORANGE

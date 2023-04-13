@@ -39,6 +39,7 @@
 
 // OLED
 #include "SSD1331.h"
+#include "LB_OLED_Humidifier.h"
 
 // SD CARD
 #include "fatfs_sd.h"
@@ -50,12 +51,13 @@
 #include "LB_FSM_Humidifier.h"
 
 // Ultrasonic membrane humidifier
-#include "LB_FSM_Humidifier.h"
+#include "LB_USM_Humidifier.h"
 
 // Generic
 #include "stdio.h"
 #include "string.h"
 #include "stdbool.h"
+// TODO: disable the UART2
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,22 +67,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-// Ultrasonic membrane humidifier
-#define MEMBRANE_DURATION 60		// 1 min
-#define MEMBRANE_DELAY 120			// 2 min
-#define HUMIDITY_LEVEL 50.0			// [%]
-
 // Data output
 #define MAX_LEN 50
-#define MAX_LEN_DATA 12
-
-// OLED
-#define T_CENTER_X 3
-#define T_CENTER_Y 5
-#define H_CENTER_X T_CENTER_X
-#define H_CENTER_Y (T_CENTER_Y + 19)
-#define P_CENTER_X T_CENTER_X
-#define P_CENTER_Y (H_CENTER_Y + 19)
 
 // SD CARD
 #define MAX_SD_CARD_BUFF 1024
@@ -101,23 +89,19 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+// TEST TODO: delete after success
+int a = 0;
 // Ultrasonic membrane humidifier
 USM_Humidifier_settings_t Membrane_parameters = {hum_lvl_50, hum_duration_10, hum_delay_5};
 Membrane_t USM_Humidifier;
-const uint8_t Hum_Level[HUM_LVL_MAX] = {HUM_LVL_35, HUM_LVL_40, HUM_LVL_45, HUM_LVL_50, HUM_LVL_55, HUM_LVL_60};
-const uint16_t Hum_Duration[HUM_DURATION_MAX] = {HUM_DURATION_05, HUM_DURATION_10, HUM_DURATION_15};
-const uint16_t Hum_Delay[HUM_DELAY_MAX] = {HUM_DELAY_1, HUM_DELAY_2, HUM_DELAY_5, HUM_DELAY_10, HUM_DELAY_15};
 
 // Date and time
 Time_t time;
-uint8_t message_time[9];
 Date_t today;
-uint8_t message_date[12];
 
 // Temperature, humidity and pressure measurement
 struct bme280_dev bme280_sens_dev;
 struct bme280_data bme280_sens_data;
-struct bme280_data bme280_sens_data_prev; // TODO: check it
 UNITS_e unit_system = SI;
 
 // OLED
@@ -227,27 +211,18 @@ TRANSITION_FUNC_PTR_t LB_Transition_Table[STATE_MAX][EVENT_MAX] = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-// Ultrasonic membrane humidifier
-void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane, const USM_Humidifier_settings_t * p_USM_Hum_settings);
-
 // UI
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
-// UART (BME280)
-void LB_send_mes_via_UART(char * string);
-void LB_send_data_via_UART(const struct bme280_data * data);
-
-// OLED
-void LB_ssd1331_print_data_SI(const struct bme280_data * data);
-void LB_ssd1331_print_data_Imperial(const struct bme280_data * data);
-void LB_ssd1331_reset_screen_SI(const struct bme280_data * data);
-void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data);
+// TIM
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
 // SD CARD
 void send_uart (char * string);	// to send the data to the uart
 int bufsize (char * buf);		// to find the size of data in the buffer
 void bufclear (void);			// to clear the buffer
 FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data);
+FRESULT LB_update_logs_new(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data);
 void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data, uint16_t * delay_in_seconds, Data_Logging_Period_e period);
 /* USER CODE END PFP */
 
@@ -285,13 +260,13 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_USART2_UART_Init();
   MX_SPI2_Init();
   MX_FATFS_Init();
   MX_I2C1_Init();
   MX_SPI3_Init();
   MX_TIM10_Init();
   MX_ADC1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
   // Initializations of date and time
@@ -304,33 +279,31 @@ int main(void)
   LB_ADC_Start_DMA(&hadc1, &Joystick);
 
   // The initialization of humidity sensor
-  if (BME280_OK != BME280_init(&bme280_sens_dev))
-  {
-	  LB_send_mes_via_UART("Initialization failed!\r\n");
-  }
+  BME280_init(&bme280_sens_dev);
 
   // The initialization of OLED
   ssd1331_init();
-  ssd1331_clear_screen(BLACK);
+  ssd1331_clear_screen(BACKGROUND_COLOR);
 
+  //   // The initialization of TIM10
   HAL_Delay(1000);
   HAL_TIM_Base_Start_IT(&htim10);
 
   // Mount SD Card
-  fresult = f_mount(&fs, "", 0);
-  if (FR_OK != fresult)
+  //fresult = f_mount(&fs, "", 0);
+  /*if (FR_OK != fresult)
   {
 	  send_uart("error in mounting SD CARD...\r\n");
   }
   else
   {
 	  send_uart("SD CARD mounted successfully...\r\n");
-  }
+  }*/
 
   /*** Card capacity details ***/
 
   // check free space
-  f_getfree("", &fre_clust, &pfs);
+  /*f_getfree("", &fre_clust, &pfs);
 
   total = (uint32_t) ( (pfs->n_fatent - 2) * pfs->csize * 0.5);
   sprintf(buffer, "SD CARD Total Size: \t%lu\r\n", total);
@@ -338,20 +311,20 @@ int main(void)
   bufclear();
   free_space = (uint32_t) (fre_clust * pfs->csize * 0.5);
   sprintf(buffer, "SD CARD Free Space: \t%lu\r\n", free_space);
-  send_uart(buffer);
+  send_uart(buffer);*/
 
   /*** The following operation is using PUTS and GETS ***/
 
   // Open file to write/ create a file if it doesn't exist
-  fresult = f_open(&fil, logs_file_name, FA_OPEN_ALWAYS | FA_READ | FA_WRITE);	// TODO: read about f_open() macros
+  //fresult = f_open(&fil, logs_file_name, FA_OPEN_ALWAYS | FA_READ | FA_WRITE);	// TODO: read about f_open() macros
 
   // Writing text
-  fresult = f_puts("Date,Time,Temperature [C],Humidity [%], Pressure [mmHg]\r\n\n\r", &fil);
+  //fresult = f_puts("Date,Time,Temperature [C],Humidity [%], Pressure [mmHg]\r\n\n\r", &fil);
   // TODO: prepare macros for logs type (switch .csv/.txt)
-  send_uart("logs.csv created and the data is written.\r\n"); // send_uart("logs.txt created and the data is written.\r\n");
+  //send_uart("logs.csv created and the data is written.\r\n"); // send_uart("logs.txt created and the data is written.\r\n");
 
   // Close file
-  fresult = f_close(&fil);
+  //fresult = f_close(&fil);
   /*
   // Open file to read
   fresult = f_open(&fil, logs_file_name, FA_READ);
@@ -373,7 +346,7 @@ int main(void)
 	  LB_Humidifier(&bme280_sens_data, &USM_Humidifier, &Membrane_parameters);
 	  LB_Data_Logging_Function(logs_file_name, &today, &time, &bme280_sens_data, &logging_counter, logging_index);
 	  LB_Transition_Table[FSM_State][FSM_Event]();
-	  LB_UI_Joystick_State_Refresh(&Joystick_Moved);
+	  LB_UI_Joystick_State_Refresh(&Joystick_Moved);	// TODO: fix bouncing
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -476,102 +449,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	}
 }
 
-void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane, const USM_Humidifier_settings_t * p_USM_Hum_settings)
-{
-	if (Hum_Delay[p_USM_Hum_settings->humidifier_delay] <= p_membrane->membrane_delay_counter)
-	{
-		p_membrane->membrane_delay_counter = 0;
-		if (Hum_Level[p_USM_Hum_settings->target_hum_level] > data->humidity)
-		{
-			HAL_GPIO_WritePin(Membrane_GPIO_Port, Membrane_Pin, GPIO_PIN_SET);
-			p_membrane->membrane_is_active = true;
-		}
-	}
-	if (Hum_Duration[p_USM_Hum_settings->active_state_duration] <= p_membrane->membrane_active_counter)
-	{
-		p_membrane->membrane_active_counter = 0;
-		HAL_GPIO_WritePin(Membrane_GPIO_Port, Membrane_Pin, GPIO_PIN_RESET);
-		p_membrane->membrane_is_active = false;
-	}
-}
-
-// UART (BME280)
-void LB_send_mes_via_UART(char * string)
-{
-	uint16_t message_length;
-	uint8_t message[MAX_LEN];
-
-	message_length = sprintf((char *) message, string);
-	HAL_UART_Transmit_IT(&huart2, (uint8_t *) string, message_length);
-}
-
-void LB_send_data_via_UART(const struct bme280_data * data)
-{
-	uint16_t message_length;
-	uint8_t message[MAX_LEN];
-
-
-	message_length = sprintf((char *) message, "Temperature   Humidity   Pressure\r\n");
-	HAL_UART_Transmit(&huart2, (uint8_t *) message, message_length, 100);
-	message_length = sprintf((char *) message, "%.2f C       %.2f %%    %.2f P\r\n",data->temperature, data->humidity, data->pressure);
-	HAL_UART_Transmit(&huart2, (uint8_t *) message, message_length, 100);
-}
-
-// OLED
-void LB_ssd1331_reset_screen_SI(const struct bme280_data * data)
-{
-	uint8_t message[MAX_LEN_DATA];
-
-	sprintf((char *) message, "T: %.2f C",data->temperature);
-	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "H: %.2f %%",data->humidity);
-	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "P: %.0f mmHg", (data->pressure * 0.0075));
-	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BLACK);
-}
-
-void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data)
-{
-	uint8_t message[MAX_LEN_DATA];
-
-	sprintf((char *) message, "T: %.2f  F", ((data->temperature * 1.8) + 32.0));
-	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "H: %.2f  %%",data->humidity);
-	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, BLACK);
-	sprintf((char *) message, "P: %6.0f P",data->pressure);
-	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, BLACK);
-}
-
-void LB_ssd1331_print_data_SI(const struct bme280_data * data)
-{
-	uint8_t message[MAX_LEN_DATA];
-
-	sprintf((char *) message, "T: %.2f C", data->temperature);
-	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, PURPLE);
-	sprintf((char *) message, "H: %.2f %%", data->humidity);
-	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
-	sprintf((char *) message, "P: %.0f mmHg", (data->pressure * 0.0075));
-	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);
-}
-
-void LB_ssd1331_print_data_Imperial(const struct bme280_data * data)
-{
-	uint8_t message[MAX_LEN_DATA];
-
-	sprintf((char *) message, "T: %.2f  F", ((data->temperature * 1.8) + 32.0));
-	ssd1331_display_string(T_CENTER_X, T_CENTER_Y, message, FONT_1608, PURPLE);
-	sprintf((char *) message, "H: %.2f  %%", data->humidity);
-	ssd1331_display_string(H_CENTER_X, H_CENTER_Y, message, FONT_1608, WHITE);
-	sprintf((char *) message, "P: %6.0f P", data->pressure);
-	ssd1331_display_string(P_CENTER_X, P_CENTER_Y, message, FONT_1608, YELLOW);
-}
-
 // SD CARD
 void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data, uint16_t * delay_in_seconds, Data_Logging_Period_e period)
 {
 	  if( logging_period[period] == (*delay_in_seconds) )
 	  {
-		  LB_update_logs(file_name, pdate, ptime, data);
+		  //LB_update_logs(file_name, pdate, ptime, data);
+		  LB_update_logs_new(file_name, pdate, ptime, data);
 		  *delay_in_seconds = 0;
 	  }
 }
@@ -621,6 +505,59 @@ FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * pt
 
 	// Open the file with write access
 	fresult = f_open(&fil, file_name, FA_OPEN_ALWAYS | FA_WRITE);
+
+	// Move offset to the end of file
+	fresult = f_lseek(&fil, /*fil.fptr*/ f_size(&fil));
+
+	// Write a string to the file
+	sprintf( (char *) message, "%u-%u-%u,%u:%u:%u,%.2f,%.2f,%.0f\n", pdate->year, (pdate->month_number + 1), pdate->day, ptime->time[2], ptime->time[1], ptime->time[0],  data->temperature, data->humidity, (data->pressure * 0.0075) );
+	//sprintf( (char *) message, "%04u-%02u-%02u,%02u:%02u:%02u,%.2f,%.2f,%.0f\r\n", pdate->year, (pdate->month_number + 1), pdate->day, ptime->time[2], ptime->time[1], ptime->time[0],  data->temperature, data->humidity, (data->pressure * 0.0075) );
+	fresult = f_puts((TCHAR *) message, &fil);
+
+	f_close(&fil);
+
+	// Unmount SD CARD
+	fresult = f_mount(NULL, "", 1);
+	/*if (FR_OK == fresult)
+	{
+	  send_uart("SD CARD UNMOUNTED successfully...\n\r");
+	}*/
+
+	return fresult;
+}
+
+FRESULT LB_update_logs_new(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data)
+{
+	FIL fil;
+	FRESULT fresult;
+	uint8_t message[MAX_LEN];
+
+	// Mount SD Card
+	fresult = f_mount(&fs, "", 0);
+	/*if (FR_OK != fresult)
+	{
+	  send_uart("error in mounting SD CARD...\r\n");
+	}
+	else
+	{
+	  send_uart("SD CARD mounted successfully...\r\n");
+	}*/
+
+	/*** Updating an existing file ***/
+
+	// Open the file with write access
+	if ( FR_OK != (fresult = f_open(&fil, file_name, FA_OPEN_EXISTING | FA_WRITE)) )
+	{
+		a = 1; // TEST TODO: delete after success
+		if ( FR_OK != (fresult = f_open(&fil, file_name, FA_OPEN_ALWAYS | FA_WRITE)) )
+		{
+			a = -1; // TEST TODO: delete after success
+			fresult = f_mount(NULL, "", 1);
+			a = 0;
+			return fresult;
+		}
+		fresult = f_puts("Date,Time,Temperature [C],Humidity [%], Pressure [mmHg]\r\n\n\r", &fil);
+	}
 
 	// Move offset to the end of file
 	fresult = f_lseek(&fil, /*fil.fptr*/ f_size(&fil));

@@ -33,6 +33,7 @@
 #include <stdio.h>
 
 /* Program-specific declarations ---------------------------------------------*/
+#define MAX_LEN_DATA 12
 #define REFRESH_FREQ 5
 #define NON_DATE_N_TIME_SET_STATE(X) ( ((X) > state_set_date_d) || ((X) < state_set_time_h))
 #define DATA_LOGGING_COLOR_TEXT WHITE
@@ -183,5 +184,40 @@ void set_data_logging_period(void);
   * @retval None
   */
 void LB_DMA_Joystick_Event(const Joystick_t * p_Joystick, EVENT_e * p_event);
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane, const USM_Humidifier_settings_t * p_USM_Hum_settings);
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_ssd1331_print_data_SI(const struct bme280_data * data);
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_ssd1331_print_data_Imperial(const struct bme280_data * data);
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_ssd1331_reset_screen_SI(const struct bme280_data * data);
+
+/** TODO: write the description
+  * @brief  sets EVENT_e according to a joystick state
+  * @param  None
+  * @retval None
+  */
+void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data);
 
 #endif /* INC_LB_FSM_HUMIDIFIER_H_ */

@@ -57,10 +57,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define USART_TX_Pin GPIO_PIN_2
-#define USART_TX_GPIO_Port GPIOA
-#define USART_RX_Pin GPIO_PIN_3
-#define USART_RX_GPIO_Port GPIOA
 #define Joystick_button_Pin GPIO_PIN_4
 #define Joystick_button_GPIO_Port GPIOC
 #define Joystick_button_EXTI_IRQn EXTI4_IRQn
