@@ -9,6 +9,7 @@
 // Main
 #include <LB_FSM_Humidifier.h>
 #include "LB_OLED_Humidifier.h"
+#include "LB_SD_CARD_Humidifier.h"
 
 // Date and time
 extern Time_t time;

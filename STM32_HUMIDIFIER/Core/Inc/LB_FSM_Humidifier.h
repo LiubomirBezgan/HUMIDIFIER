@@ -36,8 +36,6 @@
 #define MAX_LEN_DATA 12
 #define REFRESH_FREQ 5
 #define NON_DATE_N_TIME_SET_STATE(X) ( ((X) > state_set_date_d) || ((X) < state_set_time_h))
-#define DATA_LOGGING_COLOR_TEXT WHITE
-#define DATA_LOGGING_COLOR_DIGITS RED
 
 /* General type definitions --------------------------------------------------*/
 typedef enum {

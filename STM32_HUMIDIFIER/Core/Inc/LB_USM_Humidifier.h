@@ -71,9 +71,9 @@ typedef enum {
 } Hum_Level_e;
 
 typedef enum {
-	hum_duration_05,		// 30 s
-	hum_duration_10,		// 60 s
-	hum_duration_15,		// 90 s
+	hum_duration_30,		// 30 s
+	hum_duration_60,		// 60 s
+	hum_duration_90,		// 90 s
 	HUM_DURATION_MAX
 } Hum_Duration_e;
 
@@ -99,5 +99,5 @@ typedef struct usm_humidifier {
   * @param  pdate points to the Date_t data type (date)
   * @retval None
   */
-void LB_Init_USM_Hum_Parameters(USM_Humidifier_settings_t * p_USM_param);
+void LB_Init_USM_Hum_Parameters(USM_Humidifier_settings_t * p_USM_param); // TODO: complete the function
 #endif /* INC_LB_USM_HUMIDIFIER_H_ */
