@@ -68,7 +68,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 // Data output
-#define MAX_LEN 50
+#define MAX_LEN 37
 
 // SD CARD
 #define MAX_SD_CARD_BUFF 1024
@@ -89,8 +89,6 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-// TEST TODO: delete after success
-int a = 0;
 // Ultrasonic membrane humidifier
 USM_Humidifier_settings_t Membrane_parameters = {hum_lvl_50, hum_duration_10, hum_delay_5};
 Membrane_t USM_Humidifier;
@@ -102,6 +100,7 @@ Date_t today;
 // Temperature, humidity and pressure measurement
 struct bme280_dev bme280_sens_dev;
 struct bme280_data bme280_sens_data;
+struct bme280_data bme280_sens_logging_data;
 UNITS_e unit_system = SI;
 
 // OLED
@@ -109,13 +108,14 @@ uint8_t thp_screen_counter = 0;
 volatile bool clock_screen_update = false;
 
 // SD CARD
-Data_Logging_Period_e logging_index = logging_5_min;
+Data_Logging_Period_e logging_index = logging_1_min;
 const uint16_t logging_period[PERIOD_MAX] = {
 		LOGGING_PERIOD_1, LOGGING_PERIOD_5, LOGGING_PERIOD_10,
 		LOGGING_PERIOD_15, LOGGING_PERIOD_20, LOGGING_PERIOD_30
 };
 uint16_t logging_counter = 0;
 char * logs_file_name = "logs.csv"; //char * logs_file_name = "logs.txt";
+
 FATFS fs;							// file system
 FIL fil;							// file
 FRESULT fresult;					// to store the result
@@ -218,12 +218,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
 // SD CARD
-void send_uart (char * string);	// to send the data to the uart
-int bufsize (char * buf);		// to find the size of data in the buffer
-void bufclear (void);			// to clear the buffer
-FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data);
-FRESULT LB_update_logs_new(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data);
-void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data, uint16_t * delay_in_seconds, Data_Logging_Period_e period);
+//void send_uart (char * string);	// to send the data to the uart
+//int bufsize (char * buf);		// to find the size of data in the buffer
+//void bufclear (void);			// to clear the buffer
+FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * ptime, struct bme280_dev * dev, struct bme280_data * data);
+void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time_t * ptime, struct bme280_dev * dev, struct bme280_data * data, uint16_t * delay_in_seconds, Data_Logging_Period_e period);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -272,7 +271,7 @@ int main(void)
   // Initializations of date and time
   LB_Init_Date(&today);
   LB_Init_Time(&time);
-  LB_Set_Time(&time, 21, 26, 13);
+  LB_Set_Time(&time, 12, 0, 0);
 
   // The initialization of UI
   LB_Init_Button(&Joystick_Moved);
@@ -344,7 +343,7 @@ int main(void)
   while (1)
   {
 	  LB_Humidifier(&bme280_sens_data, &USM_Humidifier, &Membrane_parameters);
-	  LB_Data_Logging_Function(logs_file_name, &today, &time, &bme280_sens_data, &logging_counter, logging_index);
+	  LB_Data_Logging_Function(logs_file_name, &today, &time, &bme280_sens_dev, &bme280_sens_logging_data, &logging_counter, logging_index);
 	  LB_Transition_Table[FSM_State][FSM_Event]();
 	  LB_UI_Joystick_State_Refresh(&Joystick_Moved);	// TODO: fix bouncing
     /* USER CODE END WHILE */
@@ -450,23 +449,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 }
 
 // SD CARD
-void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data, uint16_t * delay_in_seconds, Data_Logging_Period_e period)
+void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time_t * ptime, struct bme280_dev * dev, struct bme280_data * data, uint16_t * delay_in_seconds, Data_Logging_Period_e period)
 {
 	  if( logging_period[period] == (*delay_in_seconds) )
 	  {
-		  //LB_update_logs(file_name, pdate, ptime, data);
-		  LB_update_logs_new(file_name, pdate, ptime, data);
+		  LB_update_logs(file_name, pdate, ptime, dev, data);
 		  *delay_in_seconds = 0;
 	  }
 }
 
-void send_uart (char * string)
+/*void send_uart (char * string)
 {
 	uint8_t len = strlen(string);
 	HAL_UART_Transmit(&huart2, (uint8_t *) string, len, 2000); // transmit in blocking mode
-}
+}*/
 
-int bufsize (char * buf)
+/*int bufsize (char * buf)
 {
 	int i = 0;
 	while ('\0' != *buf++)
@@ -474,107 +472,62 @@ int bufsize (char * buf)
 		i++;
 	}
 	return i;
-}
+}*/
 
-void bufclear (void)
+/*void bufclear (void)
 {
 	for (int i = 0; i < MAX_SD_CARD_BUFF; i++)
 	{
 		buffer[i] = '\0';
 	}
-}
+}*/
 
-FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data)
+FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * ptime, struct bme280_dev * dev, struct bme280_data * data)
 {
 	FIL fil;
 	FRESULT fresult;
 	uint8_t message[MAX_LEN];
 
 	// Mount SD Card
-	fresult = f_mount(&fs, "", 0);
-	/*if (FR_OK != fresult)
+	if ( FR_DISK_ERR == (fresult = f_mount(&fs, "", 1)) )
 	{
-	  send_uart("error in mounting SD CARD...\r\n");
+		FATFS_UnLinkDriver(USERPath);
+		MX_FATFS_Init();
+		if ( FR_OK != (fresult = f_mount(&fs, "", 1)) )
+		{
+			fresult = f_mount(NULL, "", 1); // TODO: is it necessary?
+			return fresult;
+		}
 	}
-	else
-	{
-	  send_uart("SD CARD mounted successfully...\r\n");
-	}*/
-
-	/*** Updating an existing file ***/
-
-	// Open the file with write access
-	fresult = f_open(&fil, file_name, FA_OPEN_ALWAYS | FA_WRITE);
-
-	// Move offset to the end of file
-	fresult = f_lseek(&fil, /*fil.fptr*/ f_size(&fil));
-
-	// Write a string to the file
-	sprintf( (char *) message, "%u-%u-%u,%u:%u:%u,%.2f,%.2f,%.0f\n", pdate->year, (pdate->month_number + 1), pdate->day, ptime->time[2], ptime->time[1], ptime->time[0],  data->temperature, data->humidity, (data->pressure * 0.0075) );
-	//sprintf( (char *) message, "%04u-%02u-%02u,%02u:%02u:%02u,%.2f,%.2f,%.0f\r\n", pdate->year, (pdate->month_number + 1), pdate->day, ptime->time[2], ptime->time[1], ptime->time[0],  data->temperature, data->humidity, (data->pressure * 0.0075) );
-	fresult = f_puts((TCHAR *) message, &fil);
-
-	f_close(&fil);
-
-	// Unmount SD CARD
-	fresult = f_mount(NULL, "", 1);
-	/*if (FR_OK == fresult)
-	{
-	  send_uart("SD CARD UNMOUNTED successfully...\n\r");
-	}*/
-
-	return fresult;
-}
-
-FRESULT LB_update_logs_new(char * file_name, const Date_t * pdate, const Time_t * ptime, const struct bme280_data * data)
-{
-	FIL fil;
-	FRESULT fresult;
-	uint8_t message[MAX_LEN];
-
-	// Mount SD Card
-	fresult = f_mount(&fs, "", 0);
-	/*if (FR_OK != fresult)
-	{
-	  send_uart("error in mounting SD CARD...\r\n");
-	}
-	else
-	{
-	  send_uart("SD CARD mounted successfully...\r\n");
-	}*/
-
-	/*** Updating an existing file ***/
 
 	// Open the file with write access
 	if ( FR_OK != (fresult = f_open(&fil, file_name, FA_OPEN_EXISTING | FA_WRITE)) )
 	{
-		a = 1; // TEST TODO: delete after success
 		if ( FR_OK != (fresult = f_open(&fil, file_name, FA_OPEN_ALWAYS | FA_WRITE)) )
 		{
-			a = -1; // TEST TODO: delete after success
+			// Unmount SD CARD
 			fresult = f_mount(NULL, "", 1);
-			a = 0;
 			return fresult;
 		}
-		fresult = f_puts("Date,Time,Temperature [C],Humidity [%], Pressure [mmHg]\r\n\n\r", &fil);
+		fresult = f_puts("Date,Time,Temperature [C],Humidity [%], Pressure [mmHg]\r\n", &fil);
 	}
 
 	// Move offset to the end of file
 	fresult = f_lseek(&fil, /*fil.fptr*/ f_size(&fil));
 
+	// Update THP data
+	BME280_read_data(dev, data);
+
+	/*** Updating an existing file ***/
 	// Write a string to the file
-	sprintf( (char *) message, "%u-%u-%u,%u:%u:%u,%.2f,%.2f,%.0f\n", pdate->year, (pdate->month_number + 1), pdate->day, ptime->time[2], ptime->time[1], ptime->time[0],  data->temperature, data->humidity, (data->pressure * 0.0075) );
-	//sprintf( (char *) message, "%04u-%02u-%02u,%02u:%02u:%02u,%.2f,%.2f,%.0f\r\n", pdate->year, (pdate->month_number + 1), pdate->day, ptime->time[2], ptime->time[1], ptime->time[0],  data->temperature, data->humidity, (data->pressure * 0.0075) );
+	sprintf( (char *) message, "%04u-%02u-%02u,%02u:%02u:%02u,%.2f,%.2f,%.0f\n", pdate->year, (pdate->month_number + 1), pdate->day, ptime->time[2], ptime->time[1], ptime->time[0],  data->temperature, data->humidity, (data->pressure * 0.0075) );
 	fresult = f_puts((TCHAR *) message, &fil);
 
+	// Close the file
 	f_close(&fil);
 
 	// Unmount SD CARD
 	fresult = f_mount(NULL, "", 1);
-	/*if (FR_OK == fresult)
-	{
-	  send_uart("SD CARD UNMOUNTED successfully...\n\r");
-	}*/
 
 	return fresult;
 }

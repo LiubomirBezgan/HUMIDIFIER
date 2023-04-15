@@ -58,16 +58,21 @@ void thp_screen(void)
 	if (event_none != FSM_Event)
 	{
 		ssd1331_clear_screen(BACKGROUND_COLOR);
-		BME280_read_data(&bme280_sens_dev, &bme280_sens_data); // TODO: add bme280_sens_data_prev to reduce the delay of screen refresh
+		thp_screen_counter = 0;
 		if (SI == unit_system)
 		{
+			bme280_sens_data_prev = bme280_sens_data;
+			BME280_read_data(&bme280_sens_dev, &bme280_sens_data);
+			LB_ssd1331_reset_screen_SI(&bme280_sens_data_prev);
 			LB_ssd1331_print_data_SI(&bme280_sens_data);
 		}
 		else
 		{
+			bme280_sens_data_prev = bme280_sens_data;
+			BME280_read_data(&bme280_sens_dev, &bme280_sens_data);
+			LB_ssd1331_reset_screen_Imperial(&bme280_sens_data_prev);
 			LB_ssd1331_print_data_Imperial(&bme280_sens_data);
 		}
-		thp_screen_counter = 0;
 	}
 	else
 	{
@@ -89,7 +94,6 @@ void thp_screen(void)
 				LB_ssd1331_print_data_Imperial(&bme280_sens_data);
 			}
 		}
-
 	}
 	FSM_Event = event_none;
 }
