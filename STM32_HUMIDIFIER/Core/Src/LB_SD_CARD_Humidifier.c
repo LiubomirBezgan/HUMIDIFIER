@@ -8,8 +8,10 @@
 #include <LB_SD_CARD_Humidifier.h>
 
 /* Variables ------------------------------------------------------------------*/
-// FATFS fs;						// file system TODO: check scope and linkage
-extern const uint16_t logging_period[];
+const uint16_t logging_period[PERIOD_MAX] = {
+		LOGGING_PERIOD_1, LOGGING_PERIOD_5, LOGGING_PERIOD_10,
+		LOGGING_PERIOD_15, LOGGING_PERIOD_20, LOGGING_PERIOD_30
+};
 
 /* Function definitions ------------------------------------------------------*/
 /** TODO: complete the description
@@ -42,7 +44,7 @@ void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time
   */
 FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * ptime, struct bme280_dev * dev, struct bme280_data * data)
 {
-	FATFS fs;							// file system TODO: check scope and linkage
+	FATFS fs;
 	FIL fil;
 	FRESULT fresult;
 	uint8_t message[MAX_LEN];
@@ -68,7 +70,11 @@ FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * pt
 			fresult = f_mount(NULL, "", 1);
 			return fresult;
 		}
+		#ifdef CSV_LOGGING
 		fresult = f_puts("Date,Time,Temperature [C],Humidity [%], Pressure [mmHg]\r\n", &fil);
+		#else
+		fresult = f_puts("Date,Time,Temperature [C],Humidity [%], Pressure [mmHg]\r\n\r\n", &fil);
+		#endif
 	}
 
 	// Move offset to the end of file
@@ -79,7 +85,11 @@ FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * pt
 
 	/*** Updating an existing file ***/
 	// Write a string to the file
+	#ifdef CSV_LOGGING
 	sprintf( (char *) message, "%04u-%02u-%02u,%02u:%02u:%02u,%.2f,%.2f,%.0f\n", pdate->year, (pdate->month_number + 1), pdate->day, ptime->time[2], ptime->time[1], ptime->time[0],  data->temperature, data->humidity, (data->pressure * 0.0075) );
+	#else
+	sprintf( (char *) message, "%04u-%02u-%02u,%02u:%02u:%02u,%.2f,%.2f,%.0f\r\n", pdate->year, (pdate->month_number + 1), pdate->day, ptime->time[2], ptime->time[1], ptime->time[0],  data->temperature, data->humidity, (data->pressure * 0.0075) );
+	#endif
 	fresult = f_puts((TCHAR *) message, &fil);
 
 	// Close the file

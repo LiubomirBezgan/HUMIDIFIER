@@ -5,8 +5,12 @@
  *      Author: SKG.POTOP
  */
 
+/* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef INC_LB_OLED_HUMIDIFIER_H_
 #define INC_LB_OLED_HUMIDIFIER_H_
+
+/* Includes ------------------------------------------------------------------*/
+#include "SSD1331.h"
 
 /* Program-specific declarations ---------------------------------------------*/
 // General

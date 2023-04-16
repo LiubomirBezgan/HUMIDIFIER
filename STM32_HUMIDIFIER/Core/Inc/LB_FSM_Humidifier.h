@@ -16,7 +16,6 @@
 #include "LB_date&time_add.h"
 
 // Humidity sensor
-#include "bme280_defs.h"
 #include "bme280_add.h"
 
 // UI
@@ -65,17 +64,6 @@ typedef enum {
 } EVENT_e;
 
 typedef void (*TRANSITION_FUNC_PTR_t)(void);
-
-// SD CARD
-typedef enum {
-	logging_1_min,
-	logging_5_min,
-	logging_10_min,
-	logging_15_min,
-	logging_20_min,
-	logging_30_min,
-	PERIOD_MAX
-} Data_Logging_Period_e;
 
 /* Function prototypes -------------------------------------------------------*/
 /**

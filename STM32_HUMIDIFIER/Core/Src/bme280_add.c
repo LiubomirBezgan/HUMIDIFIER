@@ -4,13 +4,12 @@
  *  Created on: Mar 31, 2023
  *      Author: SKG.POTOP
  */
+
 #include "bme280_defs.h"
 #include "bme280.h"
 #include "i2c.h"
 #include "stdio.h"
 #include "stm32f4xx_hal.h"
-
-//void print_sensor_data(struct bme280_data *comp_data);
 
 void delay_us(uint32_t period, void *intf_ptr)
 {
@@ -80,15 +79,3 @@ int8_t BME280_read_data (struct bme280_dev *dev, struct bme280_data * pcomp_data
 
 	return rslt;
 }
-
-/*
-void print_sensor_data(struct bme280_data *comp_data)
-{
-#ifdef BME280_FLOAT_ENABLE
-        printf("%0.2f, %0.2f, %0.2f\r\n",comp_data->temperature, comp_data->pressure, comp_data->humidity);
-#else
-        printf("%ld, %ld, %ld\r\n",comp_data->temperature, comp_data->pressure, comp_data->humidity);
-#endif
-}
-*/
-

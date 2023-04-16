@@ -34,14 +34,12 @@
 
 // Humidity sensor
 #include "bme280_add.h"
-#include "bme280_defs.h"
 
 // OLED
-#include "SSD1331.h"
+//#include "SSD1331.h"
 #include "LB_OLED_Humidifier.h"
 
 // SD CARD
-#include "fatfs_sd.h"
 #include "LB_SD_CARD_Humidifier.h"
 
 // UI
@@ -66,7 +64,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-// TODO: prepare macros for logs type (switch .csv/.txt)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -97,23 +95,12 @@ volatile bool clock_screen_update = false;
 
 // SD CARD
 Data_Logging_Period_e logging_index = logging_1_min;
-const uint16_t logging_period[PERIOD_MAX] = {
-		LOGGING_PERIOD_1, LOGGING_PERIOD_5, LOGGING_PERIOD_10,
-		LOGGING_PERIOD_15, LOGGING_PERIOD_20, LOGGING_PERIOD_30
-};
 uint16_t logging_counter = 0;
-char * logs_file_name = "logs.csv"; //char * logs_file_name = "logs.txt";
-
-//FATFS fs;							// file system TODO: check scope and linkage
-//FIL fil;							// file
-//FRESULT fresult;					// to store the result
-//char buffer[MAX_SD_CARD_BUFF];		// to store data
-//UINT br, bw;						// file read/write count
-// capacity related variables
-//FATFS * pfs;
-//DWORD fre_clust;
-//uint32_t total, free_space;
-
+#ifdef CSV_LOGGING				// You can find #define CSV_LOGGING line in LB_SD_CARD_Humidifier.h
+char * logs_file_name = "logs.csv";
+#else
+char * logs_file_name = "logs.txt";
+#endif
 // UI
 Joystick_t Joystick;
 Button_t Joystick_Moved;
@@ -264,58 +251,10 @@ int main(void)
   ssd1331_init();
   ssd1331_clear_screen(BACKGROUND_COLOR);
 
-  //   // The initialization of TIM10
+  // The initialization of TIM10
   HAL_Delay(1000);
   HAL_TIM_Base_Start_IT(&htim10);
 
-  // Mount SD Card
-  //fresult = f_mount(&fs, "", 0);
-  /*if (FR_OK != fresult)
-  {
-	  send_uart("error in mounting SD CARD...\r\n");
-  }
-  else
-  {
-	  send_uart("SD CARD mounted successfully...\r\n");
-  }*/
-
-  /*** Card capacity details ***/
-
-  // check free space
-  /*f_getfree("", &fre_clust, &pfs);
-
-  total = (uint32_t) ( (pfs->n_fatent - 2) * pfs->csize * 0.5);
-  sprintf(buffer, "SD CARD Total Size: \t%lu\r\n", total);
-  send_uart(buffer);
-  bufclear();
-  free_space = (uint32_t) (fre_clust * pfs->csize * 0.5);
-  sprintf(buffer, "SD CARD Free Space: \t%lu\r\n", free_space);
-  send_uart(buffer);*/
-
-  /*** The following operation is using PUTS and GETS ***/
-
-  // Open file to write/ create a file if it doesn't exist
-  //fresult = f_open(&fil, logs_file_name, FA_OPEN_ALWAYS | FA_READ | FA_WRITE);
-
-  // Writing text
-  //fresult = f_puts("Date,Time,Temperature [C],Humidity [%], Pressure [mmHg]\r\n\n\r", &fil);
-
-  //send_uart("logs.csv created and the data is written.\r\n"); // send_uart("logs.txt created and the data is written.\r\n");
-
-  // Close file
-  //fresult = f_close(&fil);
-  /*
-  // Open file to read
-  fresult = f_open(&fil, logs_file_name, FA_READ);
-
-  // Read string from the file
-  f_gets(buffer, sizeof(buffer), &fil);
-  send_uart(buffer);
-
-  // Close file
-  f_close(&fil);
-  bufclear();
-  */
   /* USER CODE END 2 */
 
   /* Infinite loop */

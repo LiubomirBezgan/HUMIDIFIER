@@ -38,6 +38,21 @@
 #define DATA_LOGGING_COLOR_TEXT WHITE
 #define DATA_LOGGING_COLOR_DIGITS RED
 
+// The type of log files (switch .csv/.txt)
+#define CSV_LOGGING // comment the line if you want to write to a .txt file
+
+/* General type definitions --------------------------------------------------*/
+// SD CARD
+typedef enum {
+	logging_1_min,
+	logging_5_min,
+	logging_10_min,
+	logging_15_min,
+	logging_20_min,
+	logging_30_min,
+	PERIOD_MAX
+} Data_Logging_Period_e;
+
 /* Function prototypes -------------------------------------------------------*/
 
 /** TODO: complete the description
