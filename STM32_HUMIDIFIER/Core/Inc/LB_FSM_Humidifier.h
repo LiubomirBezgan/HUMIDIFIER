@@ -1,7 +1,7 @@
 /*
  * LB_FSM_Humidifier.h
  *
- *  Created on: 5 apr. 2023
+ *  Created on: Apr 5, 2023
  *      Author: SKG.POTOP
  */
 
@@ -66,6 +66,14 @@ typedef enum {
 typedef void (*TRANSITION_FUNC_PTR_t)(void);
 
 /* Function prototypes -------------------------------------------------------*/
+/**
+  * @brief  initializes a finite-state machine
+  * @param  pstate points to a variable, that describes the state of FSM
+  * @param  pevent points to a variable, that describes the event of FSM
+  * @retval None
+  */
+void LB_Init_FSM(STATE_e * pstate, EVENT_e * pevent);
+
 /**
   * @brief  prints the data screen that shows temperature, humidity and pressure
   * @param  None

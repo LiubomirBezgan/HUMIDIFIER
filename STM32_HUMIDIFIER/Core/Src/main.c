@@ -36,7 +36,6 @@
 #include "bme280_add.h"
 
 // OLED
-//#include "SSD1331.h"
 #include "LB_OLED_Humidifier.h"
 
 // SD CARD
@@ -49,9 +48,9 @@
 #include "LB_FSM_Humidifier.h"
 
 // Ultrasonic membrane humidifier
-#include "LB_USM_Humidifier.h" // TODO: complete files
+#include "LB_USM_Humidifier.h"
 
-// Generic
+// Standard
 #include "stdio.h"
 #include "string.h"
 #include "stdbool.h"
@@ -76,7 +75,7 @@
 
 /* USER CODE BEGIN PV */
 // Ultrasonic membrane humidifier
-USM_Humidifier_settings_t Membrane_parameters = {hum_lvl_50, hum_duration_60, hum_delay_5};
+USM_Humidifier_settings_t Membrane_parameters;
 Membrane_t USM_Humidifier;
 
 // Date and time
@@ -101,13 +100,15 @@ char * logs_file_name = "logs.csv";
 #else
 char * logs_file_name = "logs.txt";
 #endif
+
 // UI
 Joystick_t Joystick;
 Button_t Joystick_Moved;
+Button_t Joystick_Pressed;
 
 // FSM
-STATE_e FSM_State = state_thp_screen;
-EVENT_e FSM_Event = event_none;
+STATE_e FSM_State;
+EVENT_e FSM_Event;
 
 TRANSITION_FUNC_PTR_t LB_Transition_Table[STATE_MAX][EVENT_MAX] = {
 		[state_thp_screen]					[event_none]			=thp_screen,
@@ -235,6 +236,9 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
+  // The initialization of FSM
+  LB_Init_FSM(&FSM_State, &FSM_Event);
+
   // Initializations of date and time
   LB_Init_Date(&today);
   LB_Init_Time(&time);
@@ -242,17 +246,21 @@ int main(void)
 
   // The initialization of UI
   LB_Init_Button(&Joystick_Moved);
+  LB_Init_Button(&Joystick_Pressed);
   LB_ADC_Start_DMA(&hadc1, &Joystick);
 
   // The initialization of humidity sensor
   BME280_init(&bme280_sens_dev);
+
+  // The initialization of ultrasonic membrane humidifier
+  LB_Init_USM_Hum_Parameters(&Membrane_parameters, hum_lvl_50, hum_duration_60, hum_delay_5);
 
   // The initialization of OLED
   ssd1331_init();
   ssd1331_clear_screen(BACKGROUND_COLOR);
 
   // The initialization of TIM10
-  HAL_Delay(1000);
+  HAL_Delay(500);
   HAL_TIM_Base_Start_IT(&htim10);
 
   /* USER CODE END 2 */
@@ -264,7 +272,7 @@ int main(void)
 	  LB_Humidifier(&bme280_sens_data, &USM_Humidifier, &Membrane_parameters);
 	  LB_Data_Logging_Function(logs_file_name, &today, &time, &bme280_sens_dev, &bme280_sens_logging_data, &logging_counter, logging_index);
 	  LB_Transition_Table[FSM_State][FSM_Event]();
-	  LB_UI_Joystick_State_Refresh(&Joystick_Moved);	// TODO: fix bouncing
+	  LB_UI_Joystick_State_Refresh(&Joystick_Moved, &Joystick_Pressed);	// TODO: fix bouncing
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -322,7 +330,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if (Joystick_button_Pin == GPIO_Pin)
 	{
-		LB_UI_Joystick_Switch_Pressed();
+		LB_UI_Joystick_Switch_Pressed(&Joystick_Pressed);
 		if (state_thp_screen == FSM_State)
 		{
 			if (SI == unit_system)

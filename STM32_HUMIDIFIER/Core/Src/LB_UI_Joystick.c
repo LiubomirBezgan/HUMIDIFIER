@@ -34,23 +34,33 @@ void LB_Init_Button(Button_t * pButton)
 }
 
 /**
-  * @brief  enables EXTI interrupts on Line 4 and sets a Button_t data type to false (motionless or not pressed)
-  * @param  pButton points to the Button_t data type
+  * @brief  enables EXTI interrupts on Line 4 and sets a Button_t data types (movement and press) to false (motionless and not pressed)
+  * @param  pButton_Moved points to the Button_t data type, which describes the movement state of joystick
+  * @param  pButton_Pressed points to the Button_t data type, which describes the press state of joystick
   * @retval None
   */
-void LB_UI_Joystick_State_Refresh(Button_t * pButton)
+void LB_UI_Joystick_State_Refresh(Button_t * pButton_Moved, Button_t * pButton_Pressed)
 {
-	  HAL_Delay(JOYSTICK_DELAY);				// Switch debouncing
-	  EXTI->IMR |= ((uint32_t) EXTI_IMR_MR4);	// Interrupt request from line 4 is not masked TODO: maybe other place?
-	  *pButton = false;
+	if (*pButton_Pressed)
+	{
+		HAL_Delay(JOYSTICK_PRESS_DELAY);
+	}
+	else
+	{
+		HAL_Delay(JOYSTICK_MOVE_DELAY);
+	}
+	EXTI->IMR |= ((uint32_t) EXTI_IMR_MR4);	// Interrupt request from line 4 is not masked TODO: maybe other place?
+	*pButton_Pressed = false;
+	*pButton_Moved = false;
 }
 
 /**
-  * @brief  desables EXTI interrupts on Line 4
-  * @param  none
+  * @brief  desables EXTI interrupts on Line 4 and sets a Button_t data types (press) to true (pressed)
+  * @param  pButton points to the Button_t data type
   * @retval None
   */
-void LB_UI_Joystick_Switch_Pressed(void)
+void LB_UI_Joystick_Switch_Pressed(Button_t * pButton)
 {
 	EXTI->IMR &= ~((uint32_t) EXTI_IMR_MR4);	// Interrupt request from line 4 is masked
+	*pButton = true;
 }

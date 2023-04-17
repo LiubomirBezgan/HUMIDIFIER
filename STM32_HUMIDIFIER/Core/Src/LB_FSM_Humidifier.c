@@ -1,7 +1,7 @@
 /*
  * LB_FSM_Humidifier.c
  *
- *  Created on: 5 apr. 2023
+ *  Created on: Apr 5, 2023
  *      Author: SKG.POTOP
  */
 
@@ -11,6 +11,7 @@
 #include "LB_OLED_Humidifier.h"
 #include "LB_SD_CARD_Humidifier.h"
 
+/* Variables ------------------------------------------------------------------*/
 // Date and time
 extern Time_t time;
 uint8_t message_time[9];
@@ -20,6 +21,7 @@ uint8_t message_date[12];
 // UI
 extern Joystick_t Joystick;
 extern Button_t Joystick_Moved;
+extern Button_t Joystick_Pressed;
 
 // Main
 extern STATE_e FSM_State;
@@ -43,10 +45,22 @@ extern Data_Logging_Period_e logging_index;
 extern USM_Humidifier_settings_t Membrane_parameters;
 extern Membrane_t USM_Humidifier;
 const uint8_t Hum_Level[HUM_LVL_MAX] = {HUM_LVL_35, HUM_LVL_40, HUM_LVL_45, HUM_LVL_50, HUM_LVL_55, HUM_LVL_60};
-const uint16_t Hum_Duration[HUM_DURATION_MAX] = {HUM_DURATION_05, HUM_DURATION_10, HUM_DURATION_15};
+const uint16_t Hum_Duration[HUM_DURATION_MAX] = {HUM_DURATION_30, HUM_DURATION_60, HUM_DURATION_90};
 const uint16_t Hum_Delay[HUM_DELAY_MAX] = {HUM_DELAY_1, HUM_DELAY_2, HUM_DELAY_5, HUM_DELAY_10, HUM_DELAY_15};
 
 /* Function prototypes -------------------------------------------------------*/
+
+/**
+  * @brief  initializes a finite-state machine
+  * @param  pstate points to a variable, that describes the state of FSM
+  * @param  pevent points to a variable, that describes the event of FSM
+  * @retval None
+  */
+void LB_Init_FSM(STATE_e * pstate, EVENT_e * pevent)
+{
+	*pstate = state_thp_screen;
+	*pevent = event_none;
+}
 
 /**
   * @brief  prints the data screen that shows temperature, humidity and pressure
@@ -575,7 +589,7 @@ void LB_DMA_Joystick_Event(const Joystick_t * p_Joystick, EVENT_e * p_event)
 			*p_event = event_joystick_left;
 			Joystick_Moved = true;
 		}
-		else if (JOYSTICK_RIGHT(*p_Joystick))
+		if (JOYSTICK_RIGHT(*p_Joystick))
 		{
 			*p_event = event_joystick_right;
 			Joystick_Moved = true;

@@ -1,7 +1,7 @@
 /*
  * LB_OLED_Humidifier.h
  *
- *  Created on: 13 apr 2023
+ *  Created on: Apr 13, 2023
  *      Author: SKG.POTOP
  */
 
@@ -26,5 +26,9 @@
 #define T_COLOR PURPLE
 #define H_COLOR WHITE
 #define P_COLOR YELLOW
+
+// SD card logging
+#define DATA_LOGGING_COLOR_TEXT WHITE
+#define DATA_LOGGING_COLOR_DIGITS RED
 
 #endif /* INC_LB_OLED_HUMIDIFIER_H_ */

@@ -1,7 +1,7 @@
 /*
  * LB_SD_CARD_Humidifier.c
  *
- *  Created on: 15 apr 2023
+ *  Created on: Apr 15, 2023
  *      Author: SKG.POTOP
  */
 /* Includes ------------------------------------------------------------------*/
@@ -14,13 +14,15 @@ const uint16_t logging_period[PERIOD_MAX] = {
 };
 
 /* Function definitions ------------------------------------------------------*/
-/** TODO: complete the description
-  * @brief  initializes a Time_t data type (time)
-  * @param  file_name points to the Time_t data type (time)
-  * @param  pdate points to the Time_t data type (time)
-  * @param  ptime
-  * @param  dev
-  * @param  data
+/**
+  * @brief  creates a log file and write a date, time, temperature, humidity and pressure data with specified delay between consequent recording
+  * @param  file_name points to string contains a log file name
+  * @param  pdate points to the Date_t data type (date)
+  * @param  ptime points to the Time_t data type (time
+  * @param  dev points to the struct bme280_dev data type (bme280 device structure)
+  * @param  pcomp_data points to the bme280_data structure, that contains the pressure, temperature and humidity data from the sensor
+  * @param  delay_in_seconds points to the variable contains the current value of delay second counter
+  * @param  period describes the index of logging period
   * @retval None
   */
 void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time_t * ptime, struct bme280_dev * dev, struct bme280_data * data, uint16_t * delay_in_seconds, Data_Logging_Period_e period)
@@ -33,14 +35,14 @@ void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time
 }
 
 
-/** TODO: complete the description
-  * @brief  initializes a Time_t data type (time)
-  * @param  file_name points to the Time_t data type (time)
-  * @param  pdate points to the Time_t data type (time)
-  * @param  ptime
-  * @param  dev
-  * @param  data
-  * @retval ???
+/**
+  * @brief  creates a log file and write a date, time, temperature, humidity and pressure data
+  * @param  file_name points to string contains log file name
+  * @param  pdate points to the Date_t data type (date)
+  * @param  ptime points to the Time_t data type (time
+  * @param  dev points to the struct bme280_dev data type (bme280 device structure)
+  * @param  pcomp_data points to the bme280_data structure, that contains the pressure, temperature and humidity data from the sensor
+  * @retval File function return code (FRESULT) (see ff.h for details)
   */
 FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * ptime, struct bme280_dev * dev, struct bme280_data * data)
 {
@@ -56,7 +58,7 @@ FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * pt
 		MX_FATFS_Init();
 		if ( FR_OK != (fresult = f_mount(&fs, "", 1)) )
 		{
-			fresult = f_mount(NULL, "", 1); // TODO: is it necessary?
+			fresult = f_mount(NULL, "", 1);
 			return fresult;
 		}
 	}

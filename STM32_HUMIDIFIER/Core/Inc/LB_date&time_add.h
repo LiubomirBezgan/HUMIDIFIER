@@ -1,7 +1,7 @@
 /*
  * LB_date&time_add.h
  *
- *  Created on: 6 apr. 2023
+ *  Created on: Apr 6, 2023
  *      Author: SKG.POTOP
  */
 

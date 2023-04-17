@@ -12,7 +12,7 @@
 #define MONTHS 12
 
 // set the current date
-#define CURRENT_DAY 16
+#define CURRENT_DAY 17
 #define CURRENT_MONTH 4		// a number from 1 to 12
 #define CURRENT_YEAR 2023
 
@@ -27,7 +27,7 @@ typedef struct day_m_y {
 /* Function prototypes -------------------------------------------------------*/
 
 /**
-  * @brief  initializes a Date_t data type (date) and set the date of the library's latest update
+  * @brief  initializes a Date_t data type (date) and sets the date of the library's latest update
   * @param  pdate points to the Date_t data type (date)
   * @retval None
   */

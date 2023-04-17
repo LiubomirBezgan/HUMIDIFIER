@@ -1,7 +1,7 @@
 /*
  * LB_USM_Humidifier.h
  *
- *  Created on: 11 apr 2023
+ *  Created on: Apr 11, 2023
  *      Author: SKG.POTOP
  */
 
@@ -11,6 +11,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Program-specific declarations ---------------------------------------------*/
 // Ultrasonic membrane humidifier
@@ -42,13 +43,13 @@
 #define HUM_LVL_55 55			// [%]
 #define HUM_LVL_60 60			// [%]
 
-#define HUM_DURATION_05 30		// [s]
-#define HUM_DURATION_10 60		// [s]
-#define HUM_DURATION_15 90		// [s]
+#define HUM_DURATION_30 30		// [s]
+#define HUM_DURATION_60 60		// [s]
+#define HUM_DURATION_90 90		// [s]
 
 #define HUM_DELAY_1 60			// [s]
-#define HUM_DELAY_2 120		// [s]
-#define HUM_DELAY_5 300		// [s]
+#define HUM_DELAY_2 120			// [s]
+#define HUM_DELAY_5 300			// [s]
 #define HUM_DELAY_10 600		// [s]
 #define HUM_DELAY_15 900		// [s]
 
@@ -95,9 +96,13 @@ typedef struct usm_humidifier {
 
 /* Function prototypes -------------------------------------------------------*/
 /**
-  * @brief  initializes a Date_t data type (date) and set the date of the library's latest update
-  * @param  pdate points to the Date_t data type (date)
+  * @brief  initializes a USM_Humidifier_settings_t data type (target humidity level,
+  * 		the duration of membrane's active state and delay between consequent hydrations) with specified parameters
+  * @param  p_USM_param points to the USM_Humidifier_settings_t data type (the parameters of humidifier)
+  * @param  target_hum_lvl describes the target humidity level
+  * @param  active_state_duration describes the duration of membrane's active state
+  * @param  hum_delay describes the delay between consequent hydrations
   * @retval None
   */
-void LB_Init_USM_Hum_Parameters(USM_Humidifier_settings_t * p_USM_param); // TODO: complete the function
+void LB_Init_USM_Hum_Parameters(USM_Humidifier_settings_t * p_USM_param, Hum_Level_e target_hum_lvl, Hum_Duration_e active_state_duration, Hum_Delay_e hum_delay);
 #endif /* INC_LB_USM_HUMIDIFIER_H_ */
