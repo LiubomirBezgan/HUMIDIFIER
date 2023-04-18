@@ -68,8 +68,8 @@ typedef void (*TRANSITION_FUNC_PTR_t)(void);
 /* Function prototypes -------------------------------------------------------*/
 /**
   * @brief  initializes a finite-state machine
-  * @param  pstate points to a variable, that describes the state of FSM
-  * @param  pevent points to a variable, that describes the event of FSM
+  * @param  pstate points to a variable that describes the state of FSM
+  * @param  pevent points to a variable that describes the event of FSM
   * @retval None
   */
 void LB_Init_FSM(STATE_e * pstate, EVENT_e * pevent);
@@ -172,44 +172,47 @@ void set_date_d(void);
   */
 void set_data_logging_period(void);
 
-/** TODO: write the description
-  * @brief  sets EVENT_e according to a joystick state
-  * @param  None
+/**
+  * @brief  sets an EVENT_e variable according to a joystick state
+  * @param  p_Joystick points to Joystick_t data type that describes current joystick state
+  * @param  p_event points to variable that describes last event
   * @retval None
   */
 void LB_DMA_Joystick_Event(const Joystick_t * p_Joystick, EVENT_e * p_event);
 
-/** TODO: write the description
-  * @brief  sets EVENT_e according to a joystick state
-  * @param  None
+/**
+  * @brief  controls the humidity of the air on the basis of current sensor data
+  * @param  data points to bme280 sensor structure which comprises of temperature, pressure and humidity data
+  * @param  p_membrane points to ultrasonic membrane structure which comprises of humidification parameters
+  * @param  p_USM_Hum_settings points to humidifier settings structure
   * @retval None
   */
 void LB_Humidifier(const struct bme280_data * data, Membrane_t * p_membrane, const USM_Humidifier_settings_t * p_USM_Hum_settings);
 
-/** TODO: write the description
-  * @brief  sets EVENT_e according to a joystick state
-  * @param  None
+/**
+  * @brief  resets temperature, humidity and pressure screen in the case of SI units
+  * @param  data points to bme280 sensor structure which comprises of temperature, pressure and humidity data
   * @retval None
   */
 void LB_ssd1331_print_data_SI(const struct bme280_data * data);
 
-/** TODO: write the description
-  * @brief  sets EVENT_e according to a joystick state
-  * @param  None
+/**
+  * @brief  resets temperature, humidity and pressure screen in the case of imperial units
+  * @param  data points to bme280 sensor structure which comprises of temperature, pressure and humidity data
   * @retval None
   */
 void LB_ssd1331_print_data_Imperial(const struct bme280_data * data);
 
-/** TODO: write the description
-  * @brief  sets EVENT_e according to a joystick state
-  * @param  None
+/**
+  * @brief  prints temperature, humidity and pressure screen in the case of SI units
+  * @param  data points to bme280 sensor structure which comprises of temperature, pressure and humidity data
   * @retval None
   */
 void LB_ssd1331_reset_screen_SI(const struct bme280_data * data);
 
-/** TODO: write the description
-  * @brief  sets EVENT_e according to a joystick state
-  * @param  None
+/**
+  * @brief  prints temperature, humidity and pressure screen in the case of imperial units
+  * @param  data points to bme280 sensor structure which comprises of temperature, pressure and humidity data
   * @retval None
   */
 void LB_ssd1331_reset_screen_Imperial(const struct bme280_data * data);

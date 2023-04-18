@@ -20,7 +20,7 @@ const uint16_t logging_period[PERIOD_MAX] = {
   * @param  pdate points to the Date_t data type (date)
   * @param  ptime points to the Time_t data type (time
   * @param  dev points to the struct bme280_dev data type (bme280 device structure)
-  * @param  pcomp_data points to the bme280_data structure, that contains the pressure, temperature and humidity data from the sensor
+  * @param  pcomp_data points to the bme280_data structure that contains the pressure, temperature and humidity data from the sensor
   * @param  delay_in_seconds points to the variable contains the current value of delay second counter
   * @param  period describes the index of logging period
   * @retval None
@@ -41,7 +41,7 @@ void LB_Data_Logging_Function(char * file_name, const Date_t * pdate, const Time
   * @param  pdate points to the Date_t data type (date)
   * @param  ptime points to the Time_t data type (time
   * @param  dev points to the struct bme280_dev data type (bme280 device structure)
-  * @param  pcomp_data points to the bme280_data structure, that contains the pressure, temperature and humidity data from the sensor
+  * @param  pcomp_data points to the bme280_data structure that contains the pressure, temperature and humidity data from the sensor
   * @retval File function return code (FRESULT) (see ff.h for details)
   */
 FRESULT LB_update_logs(char * file_name, const Date_t * pdate, const Time_t * ptime, struct bme280_dev * dev, struct bme280_data * data)

@@ -12,7 +12,7 @@
 #define MONTHS 12
 
 // set the current date
-#define CURRENT_DAY 17
+#define CURRENT_DAY 18
 #define CURRENT_MONTH 4		// a number from 1 to 12
 #define CURRENT_YEAR 2023
 

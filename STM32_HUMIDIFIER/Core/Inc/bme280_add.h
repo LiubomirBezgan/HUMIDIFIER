@@ -57,7 +57,7 @@ int8_t BME280_init(struct bme280_dev *dev);
 /**
   * @brief  reads the pressure, temperature and humidity data from the sensor, compensates the data and store it in the bme280_data structure instance passed by the user
   * @param  dev points to the struct bme280_dev data type (bme280 device structure)
-  * @param  pcomp_data points to the bme280_data structure, that contains the pressure, temperature and humidity data from the sensor
+  * @param  pcomp_data points to the bme280_data structure that contains the pressure, temperature and humidity data from the sensor
   * @retval API success code (BME280_OK) for Success, API error code for failure (see name API error codes in bme280_defs.h)
   */
 int8_t BME280_read_data (struct bme280_dev *dev, struct bme280_data * pcomp_data);
