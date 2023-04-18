@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    xxx.h
+ * @file    SSD1331.h
  * @author  Waveshare Team
  * @version
  * @date    xx-xx-2014
@@ -45,6 +45,9 @@ enum Color {
 	CYAN = RGB(0, 255, 255), // cyan
 	GREEN = RGB(0, 255, 0), // green
 	PURPLE = RGB(160, 32, 240), // purple
+	MEDIUM_VIOLET_RED = RGB(199, 21, 133), // medium violet red
+	DARK_ORANGE = RGB(255, 140, 0), // dark orange
+	LIGHT_SEA_GREEN = RGB(32, 178, 170) // light sea green
 };
 
 /* Exported functions ------------------------------------------------------- */
