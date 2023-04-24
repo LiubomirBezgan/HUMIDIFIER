@@ -2,7 +2,7 @@
 
 STM32F411RE \ Bare metal \ Finite-state machine \ STM32CubeIDE
 
-![Figure 1](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/listed_devices.png, "Humidity control indoor station mounted on two bread boards and supplied by a mini-USB cable.")
+![Figure 1](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/listed_devices.png?raw=true, "Humidity control indoor station mounted on two bread boards and supplied by a mini-USB cable.")
 Figure 1. Humidity control indoor station mounted on two bread boards and supplied by a mini-USB cable.
 
 The device presented in Figure 1. is used to control and register indoor humidity level. An air humidification process is executed by ultrasonic membrane humidifier. User can adjust target humidity level, the duration of humidification and the delay between two consequent humidification processes. BME280 temperature, humidity and pressure sensor is used for data acquisition which allows user to check current indoor conditions printed on the OLED display. User can log the data to SD card and the log period is adjustable as well. Log data consists of date, time, temperature in °C, humidity in % and atmospheric pressure in mmHg. The device requires 5V DC power supply.
@@ -21,6 +21,8 @@ The device presented in Figure 1. is used to control and register indoor humidit
 _____
 ### FINITE-STATE MACHINE
 The main behavior of the device is determined by state transition table presented in Listing 1. The program switches states in the super loop according to joystick pushes and movements (see more details in [LB_FSM_Humidifier.h](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/STM32_HUMIDIFIER/Core/Inc/LB_FSM_Humidifier.h) and [LB_FSM_Humidifier.c](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/STM32_HUMIDIFIER/Core/Src/LB_FSM_Humidifier.c)).
+
+Listing 1. The implementation of state transition table.
  ```c
 TRANSITION_FUNC_PTR_t LB_Transition_Table[STATE_MAX][EVENT_MAX] = {
 		[state_thp_screen]			[event_none]		=thp_screen,
@@ -95,7 +97,6 @@ TRANSITION_FUNC_PTR_t LB_Transition_Table[STATE_MAX][EVENT_MAX] = {
 
 };
 ```
-Listing 1. The implementation of state transition table.
 
 There are three **interrupt** handlers in the program as well. TIM10 handler ensures all time operations (clock, calendar, active state duration, logging period etc.). EXIT4 handler is responsible for the joystick button state control. DMA2 handler reacts to joystick’s left-right movements. You can see more details in [stm32f4xx_it.c](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/STM32_HUMIDIFIER/Core/Src/stm32f4xx_it.c).
 
@@ -103,7 +104,7 @@ There are three **interrupt** handlers in the program as well. TIM10 handler ens
 The user interface consists of the 96x64 pixels SSD1331 **OLED display** and the **joystick** which has a button activated by pressing the handle.
 There are **4 menus** printed on OLED display: data screen, humidifier parameters screen, date and time screen, logging parameter screen (Figure 2.). User can swipe menus by moving joystick left or right.
 
-![Figure 2.](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/displays_OLED__edited.jpg, "Figure 2. Four user interface menus: data menu presents temperature (1.1. and 1.2), humidifier parameters menu (2.1. and 2.2), date and time menu (3.1. and 3.2), logging parameter menu (4.1. and 4.2).")
+![Figure 2.](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/displays_OLED__edited.jpg?raw=true, "Figure 2. Four user interface menus: data menu presents temperature (1.1. and 1.2), humidifier parameters menu (2.1. and 2.2), date and time menu (3.1. and 3.2), logging parameter menu (4.1. and 4.2).")
 Figure 2. Four user interface menus: data menu presents temperature (1.1. and 1.2), humidifier parameters menu (2.1. and 2.2), date and time menu (3.1. and 3.2), logging parameter menu (4.1. and 4.2).
 
 The **data menu** presents temperature, humidity and atmospheric pressure data and allows user to change units by pushing the joystick button. There are two unit sets. The first set consists of degree Celsius, relative humidity (%) and millimeter of mercury (Figure 2.1.1.). The units of the second set are degree Fahrenheit, relative humidity (%) and pascal (Figure 2.1.2.).
@@ -118,14 +119,14 @@ The **logging parameter menu** is used for check current logging period (Figure 
 ### LOG SYSTEM
 The log system is based on **FatFS** and implemented by writing date, time, temperature in °C, humidity in % and atmospheric pressure in mmHg data to the [logs.csv](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/logs.csv) file stored on a **SD card**. Device continues to log data after SD card re-insertion or creates new logs.csv file in the file absence case. The .csv format allows for the fast preparation of logged data for further analyzes (Figure 3.).
 
-![Figure 3.](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/log%20file.png, "Figure 3. The readability improving preparation of logs.csv in Excel")
+![Figure 3.](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/log%20file.png?raw=true, "Figure 3. The readability improving preparation of logs.csv in Excel")
 Figure 3. The readability improving preparation of logs.csv in Excel
 
 ### FUTURE PERSPECTIVES
 + New features adding:
-  + Logging the average values of sensor data,
-  + The lowest and the highest values recording,
-  + The adjustable format of log data.
+  + logging the average values of sensor data,
+  + the lowest and the highest values recording,
+  + the adjustable format of log data.
 + Optimazing:
   + using integer sensor data values instead of float values (the integer version of BME280 sensor API)
-  + 
+  + variables revising
