@@ -82,7 +82,7 @@ void LB_Init_FSM(STATE_e * pstate, EVENT_e * pevent);
 void thp_screen(void);
 
 /**
-  * @brief  prints the humidifier parameters screen that shows target humidity level, the duration of membrane active state and delay between consequent hydrations
+  * @brief  prints the humidifier parameters screen that shows target humidity level, the duration of membrane active state and delay between consequent humidification processes
   * @param  None
   * @retval None
   */
@@ -117,7 +117,7 @@ void set_humidity(void);
 void set_duration(void);
 
 /**
-  * @brief  sets the delay between consequent hydrations and prints the corresponding screen
+  * @brief  sets the delay between consequent humidification processes and prints the corresponding screen
   * @param  None
   * @retval None
   */
