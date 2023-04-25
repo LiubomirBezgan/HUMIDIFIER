@@ -2,7 +2,7 @@
 
 STM32F411RE \ Bare metal \ Finite-state machine \ STM32CubeIDE
 
-![Figure 1](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/listed_devices.png?raw=true, "Humidity control indoor station mounted on two bread boards and supplied by a mini-USB cable.")
+![Figure 1](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/listed_devices.png?raw=true, "Humidity control indoor station mounted on two bread boards and supplied by a mini-USB cable")
 *Figure 1.* Humidity control indoor station mounted on two bread boards and supplied by a mini-USB cable.
 
 The device presented in Figure 1. is used to control and register indoor humidity level. An air humidification process is executed by ultrasonic membrane humidifier. User can adjust target humidity level, the duration of humidification and the delay between two consequent humidification processes. BME280 temperature, humidity and pressure sensor is used for data acquisition which allows user to check current indoor conditions printed on the OLED display. User can log the data to SD card and the log period is adjustable as well. Log data consists of date, time, temperature in °C, humidity in % and atmospheric pressure in mmHg. The device requires 5V DC power supply.
@@ -102,28 +102,28 @@ There are three **interrupt** handlers in the program as well. TIM10 handler ens
 
 ### USER INTERFACE
 The user interface consists of the 96x64 pixels SSD1331 **OLED display** and the **joystick** which has a button activated by pressing the handle.
-There are **4 menus** printed on OLED display: data screen, humidifier parameters screen, date and time screen, logging parameter screen (Figure 2.). User can swipe menus by moving joystick left or right.
+There are **4 menus** printed on the OLED display: data screen, humidifier parameters screen, date and time screen, logging parameter screen (Figure 2.). User can swipe menus by moving the joystick left or right.
 
-![Figure 2.](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/displays_OLED__edited.jpg?raw=true, "Figure 2. Four user interface menus: data menu presents temperature (1.1. and 1.2), humidifier parameters menu (2.1. and 2.2), date and time menu (3.1. and 3.2), logging parameter menu (4.1. and 4.2).")
-*Figure 2.* Four user interface menus: data menu presents temperature (1.1. and 1.2), humidifier parameters menu (2.1. and 2.2), date and time menu (3.1. and 3.2), logging parameter menu (4.1. and 4.2).
+![Figure 2.](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/displays_OLED__edited.jpg?raw=true, "Figure 2. Four user interface menus: data menu (1.1. and 1.2), humidifier parameters menu (2.1. and 2.2), date and time menu (3.1. and 3.2), logging parameter menu (4.1. and 4.2)")
+*Figure 2.* Four user interface menus: data menu (1.1. and 1.2), humidifier parameters menu (2.1. and 2.2), date and time menu (3.1. and 3.2), logging parameter menu (4.1. and 4.2).
 
 The **data menu** presents temperature, humidity and atmospheric pressure data and allows user to change units by pushing the joystick button. There are two unit sets. The first set consists of degree Celsius, relative humidity (%) and millimeter of mercury (Figure 2.1.1.). The units of the second set are degree Fahrenheit, relative humidity (%) and pascal (Figure 2.1.2.).
 
-The **humidifier parameters menu** shows current target humidity level, the duration of humidification and the delay between two consequent humidification processes (Figure 2.2.1.). Pushing the joystick button leads to state when user can adjust target humidity level by moving joystick up-down (Figure 2.2.2.). If user wants to set the duration of humidification, he has to push the joystick button one more time and commits the same actions. Next joystick button pushing leads to the delay state set. Forth push allows user to come back to the humidifier parameters menu and to change the menu.
+The **humidifier parameters menu** shows current target humidity level, the duration of humidification and the delay between two consequent humidification processes (Figure 2.2.1.). Pushing the joystick button leads to state in which user can adjust target humidity level by moving the joystick up-down (Figure 2.2.2.). If user wants to set the duration of humidification, he/she has to push the joystick button one more time and perform the same actions. Next push of the joystick button leads to the delay setting. Forth push allows user to come back to the humidifier parameters menu and to change the menu.
 
-The **date and time menu** prints current date and time (Figure 2.3.1.). Pushing the joystick button leads to time adjustment state (Figure 2.3.2.). In the state user can set current time by joystick movement (left-right to change time parameter (hours, minutes or seconds); up-down to increment/decrement specified parameter). Next joystick button pushing submits time and bring device to date adjustment state with the same rules. Third push allows user to come back to the date and time menu.
+The **date and time menu** prints current date and time (Figure 2.3.1.). Pushing the joystick button leads to time adjustment state (Figure 2.3.2.). In this state user can set current time by joystick movement (left-right to change time parameter (hours, minutes or seconds); up-down to increment/decrement specified parameter). Next push of the joystick button submits time and brings the device to date adjustment state with the same rules. Third push allows user to come back to the date and time menu.
 
-The **logging parameter menu** is used for check current logging period (Figure 2.4.1.). It can be changed by pushing the joystick button and up-down joystick movement. The follow logging periods are available: 1, 5, 10, 15, 20 and 30 minutes (Figure 2.4.2.).
+The **logging parameter menu** is used for checking current logging period (Figure 2.4.1.). It can be changed by pushing the joystick button and up-down joystick movement. The following logging periods are available: 1, 5, 10, 15, 20 and 30 minutes (Figure 2.4.2.).
 
 
 ### LOG SYSTEM
-The log system is based on **FatFS** and implemented by writing date, time, temperature in °C, humidity in % and atmospheric pressure in mmHg data to the [logs.csv](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/logs.csv) file stored on a **SD card**. Device continues to log data after SD card re-insertion or creates new logs.csv file in the file absence case. The .csv format allows for the fast preparation of logged data for further analyzes (Figure 3.).
+The log system is based on **FatFS** and implemented by writing date, time, temperature in °C, humidity in % and atmospheric pressure in mmHg data to the [logs.csv](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/logs.csv) file stored on a **SD card**. Device continues to log data after SD card re-insertion or creates new logs.csv file in the file absence case. The .csv format allows to prepare logged data for further analyzes quickly (Figure 3.).
 
 ![Figure 3.](https://github.com/LiubomirBezgan/HUMIDIFIER/blob/main/log%20file.png?raw=true, "Figure 3. The readability improving preparation of logs.csv in Excel")
 *Figure 3.* The readability improving preparation of logs.csv in Excel.
 
 ### FUTURE PERSPECTIVES
-+ New features adding:
++ Adding of new features:
   + logging the average values of sensor data,
   + the lowest and the highest values recording,
   + the adjustable format of log data,
